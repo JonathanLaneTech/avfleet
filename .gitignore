@@ -1,0 +1,21 @@
+# Real configuration and secrets never leave the machine
+config.toml
+*.env
+secrets/
+*.db
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# macOS
+.DS_Store

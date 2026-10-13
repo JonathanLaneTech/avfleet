@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AV Fleet</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <h1>AV Fleet</h1>
+  </div>
+  <div class="summary" id="summary" aria-live="polite"></div>
+  <div class="stamp" id="stamp">connecting…</div>
+</header>
+<main>
+  <section id="groups" aria-label="Devices"></section>
+  <section class="log" aria-label="Event log">
+    <h2>Event log</h2>
+    <div class="filters" role="group" aria-label="Filter events">
+      <button data-kind="all" class="on">All</button>
+      <button data-kind="alert">Alerts</button>
+      <button data-kind="action">Self-healing</button>
+      <button data-kind="state">State changes</button>
+    </div>
+    <ol id="events"></ol>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

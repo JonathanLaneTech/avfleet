@@ -1,0 +1,130 @@
+# avfleet example configuration.
+#
+# Copy to config.toml (git-ignored) and replace the addresses with your own.
+# Every address below is from the documentation-only ranges (RFC 5737: 192.0.2.0/24,
+# 198.51.100.0/24) and every MAC is a made-up, locally administered 02:xx address.
+# Secrets are never written here: they are ${ENV} references, filled from env_file.
+
+[monitor]
+interval_s = 60
+db_path = "~/.avfleet/avfleet.db"
+history_days = 7
+env_file = "~/.avfleet/secrets.env"   # KEY=VALUE lines, chmod 600
+
+[web]
+host = "0.0.0.0"   # reachable from your LAN; use 127.0.0.1 for this machine only
+port = 8080
+
+[alerts]
+fail_threshold = 3        # consecutive failed checks before a DOWN alert (~3 min at 60 s)
+notify_recovery = true
+
+[[notifiers]]
+type = "pushover"
+token = "${PUSHOVER_TOKEN}"
+user = "${PUSHOVER_USER}"
+
+# --- Network -------------------------------------------------------------------------
+
+[[devices]]
+id = "udm"
+name = "Gateway (UDM Pro Max)"
+type = "unifi_device"
+host = "192.0.2.1"
+group = "Network"
+[devices.options]
+mac = "02:00:00:00:00:01"
+username = "${UNIFI_USERNAME}"   # local read-only account on the console
+password = "${UNIFI_PASSWORD}"
+
+[[devices]]
+id = "switch"
+name = "Switch (USW Pro Max 16 PoE)"
+type = "unifi_device"
+host = "192.0.2.1"               # the controller, not the switch
+group = "Network"
+[devices.options]
+mac = "02:00:00:00:00:02"
+username = "${UNIFI_USERNAME}"
+password = "${UNIFI_PASSWORD}"
+expected_up_ports = [1, 2]       # ports that must have link (e.g. uplink, Roon Core)
+
+[[devices]]
+id = "ap"
+name = "Access point (U7 Pro Max)"
+type = "unifi_device"
+host = "192.0.2.1"
+group = "Network"
+[devices.options]
+mac = "02:00:00:00:00:03"
+username = "${UNIFI_USERNAME}"
+password = "${UNIFI_PASSWORD}"
+
+# --- Audio ---------------------------------------------------------------------------
+
+[[devices]]
+id = "roon"
+name = "Roon Core"
+type = "roon"
+host = "127.0.0.1"               # monitor runs on the Core's Mac
+group = "Audio"
+[devices.options]
+port = 9330
+local = true
+[devices.remediation]
+action = "roon_restart"
+after_failures = 3
+cooldown_s = 900
+max_per_hour = 3
+[devices.remediation.options]
+busy_cpu = 15
+
+[[devices]]
+id = "yamaha"
+name = "Yamaha R-N2000A"
+type = "yamaha_yxc"
+host = "192.0.2.20"
+group = "Audio"
+
+[[devices]]
+id = "homepod"
+name = "HomePod"
+type = "homepod"
+host = "192.0.2.21"
+group = "Audio"
+
+# --- Video ---------------------------------------------------------------------------
+
+[[devices]]
+id = "kaleidescape"
+name = "Kaleidescape"
+type = "kaleidescape"
+host = "192.0.2.30"
+group = "Video"
+
+[[devices]]
+id = "apple-tv"
+name = "Apple TV"
+type = "apple_tv"
+host = "192.0.2.31"
+group = "Video"
+
+[[devices]]
+id = "tv"
+name = "Sony Bravia (K-75XR90)"
+type = "tv"
+host = "192.0.2.32"
+group = "Video"
+[devices.options]
+protocol = "sony_bravia"
+psk = "${SONY_PSK}"              # TV: Settings > Network > IP control > Pre-Shared Key
+
+# --- Lighting ------------------------------------------------------------------------
+
+[[devices]]
+id = "lutron"
+name = "Lutron HomeWorks QSX (Ketra)"
+type = "lutron_leap"
+host = "192.0.2.40"
+group = "Lighting"
+enabled = false                  # enable when the processor is online

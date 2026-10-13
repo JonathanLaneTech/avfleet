@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd agent for avfleet on macOS. Install with deploy/install-macos.sh, which fills in
+  the paths below. Runs in the logged-in user's session so the Roon restart action can
+  quit and relaunch the Roon app.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.example.avfleet</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__VENV__/bin/avfleet</string>
+    <string>run</string>
+    <string>-c</string>
+    <string>__CONFIG__</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>__LOGDIR__/avfleet.log</string>
+  <key>StandardErrorPath</key><string>__LOGDIR__/avfleet.log</string>
+</dict>
+</plist>
