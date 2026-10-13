@@ -23,6 +23,8 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(
 .mark { width: 14px; height: 14px; border-radius: 3px; background: var(--accent);
   box-shadow: 5px 5px 0 -1px color-mix(in srgb, var(--accent) 45%, transparent); }
 h1 { font-size: 17px; letter-spacing: .02em; margin: 0; }
+.logo { height: 30px; width: auto; max-width: 160px; object-fit: contain; display: block; }
+.logo[hidden] { display: none; }
 .summary { display: flex; gap: 8px; flex-wrap: wrap; }
 .count { font: 600 12px var(--mono); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); }
 .count b { font-weight: 700; }

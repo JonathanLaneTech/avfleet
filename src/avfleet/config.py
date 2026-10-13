@@ -50,6 +50,8 @@ class Config:
     history_days: int = 7
     web_host: str = "127.0.0.1"
     web_port: int = 8080
+    web_title: str = "AV Fleet"
+    web_logo: Path | None = None
     fail_threshold: int = 3
     notify_recovery: bool = True
     notifiers: list[dict[str, Any]] = field(default_factory=list)
@@ -136,6 +138,8 @@ def parse_config(data: dict[str, Any]) -> Config:
         history_days=int(monitor.get("history_days", 7)),
         web_host=web.get("host", "127.0.0.1"),
         web_port=int(web.get("port", 8080)),
+        web_title=str(web.get("title", "AV Fleet")),
+        web_logo=Path(web["logo"]).expanduser() if web.get("logo") else None,
         fail_threshold=int(alerts.get("fail_threshold", 3)),
         notify_recovery=bool(alerts.get("notify_recovery", True)),
         notifiers=list(data.get("notifiers", [])),

@@ -66,6 +66,7 @@ function chips(dev) {
   for (const [k, v] of Object.entries(m)) {
     const f = METRIC_LABELS[k];
     if (!f || v === null || v === undefined || v === "") continue;
+    if (k === "poe_watts" && !v) continue; // no PoE draw (or no PoE ports): nothing worth showing
     wrap.appendChild(el("span", "chip", f(v)));
   }
   if (dev.self_healing) wrap.appendChild(el("span", "chip heal", `self-healing: ${dev.self_healing}`));
@@ -135,6 +136,22 @@ function renderEvents(events) {
   }
 }
 
+let brandTitle = "AV Fleet";
+let brandApplied = false;
+
+function applyBranding(branding) {
+  if (branding.title) brandTitle = branding.title;
+  document.getElementById("title").textContent = brandTitle;
+  if (brandApplied) return;
+  brandApplied = true;
+  if (branding.logo) {
+    const logo = document.getElementById("logo");
+    logo.onload = () => { logo.hidden = false; document.getElementById("mark").hidden = true; };
+    logo.alt = `${brandTitle} logo`;
+    logo.src = "/logo";
+  }
+}
+
 async function refresh() {
   const stamp = document.getElementById("stamp");
   try {
@@ -148,8 +165,9 @@ async function refresh() {
     const stale = newest && Date.now() / 1000 - newest > lastData.interval_s * 3;
     stamp.textContent = stale ? `monitor stalled: last check ${ago(newest)} ago` : `updated ${new Date().toLocaleTimeString()}`;
     stamp.classList.toggle("stale", Boolean(stale));
+    applyBranding(lastData.branding || {});
     const down = lastData.devices.filter((d) => d.status === "down").length;
-    document.title = down ? `(${down} down) AV Fleet` : "AV Fleet";
+    document.title = down ? `(${down} down) ${brandTitle}` : brandTitle;
   } catch (err) {
     stamp.textContent = `dashboard offline: ${err.message}`;
     stamp.classList.add("stale");

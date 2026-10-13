@@ -94,6 +94,51 @@ def test_server_serves_dashboard_and_api(server):
     assert data["devices"][0]["id"] == "dev"
 
 
+def test_default_branding_and_no_logo(server):
+    data = json.loads(urllib.request.urlopen(server + "/api/status").read())
+    assert data["branding"] == {"title": "AV Fleet", "logo": False}
+    with pytest.raises(urllib.error.HTTPError) as err:
+        urllib.request.urlopen(server + "/logo")
+    assert err.value.code == 404
+
+
+def test_custom_title_and_logo(tmp_path):
+    logo = tmp_path / "logo.svg"
+    logo.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>')
+    cfg = _config()
+    cfg.web_title, cfg.web_logo = "Cadence Works AV Fleet", logo
+    s = Store(":memory:")
+    httpd = start_server(cfg, s)
+    base = f"http://127.0.0.1:{httpd.server_address[1]}"
+    try:
+        data = json.loads(urllib.request.urlopen(base + "/api/status").read())
+        assert data["branding"] == {"title": "Cadence Works AV Fleet", "logo": True}
+        resp = urllib.request.urlopen(base + "/logo")
+        assert resp.headers["Content-Type"] == "image/svg+xml"
+        assert "default-src 'none'" in resp.headers["Content-Security-Policy"]
+        assert b"<svg" in resp.read()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_logo_with_unsupported_type_is_ignored(tmp_path):
+    bad = tmp_path / "logo.exe"
+    bad.write_bytes(b"MZ")
+    cfg = _config()
+    cfg.web_logo = bad
+    assert build_status(cfg, Store(":memory:"))["branding"]["logo"] is False
+
+
+def test_branding_config_parsing(tmp_path):
+    from avfleet.config import parse_config
+
+    cfg = parse_config({"web": {"title": "Cadence Works AV Fleet", "logo": "~/logo.png"}})
+    assert cfg.web_title == "Cadence Works AV Fleet"
+    assert cfg.web_logo is not None and cfg.web_logo.name == "logo.png" and "~" not in str(cfg.web_logo)
+    assert parse_config({}).web_logo is None
+
+
 @pytest.mark.parametrize("path", ["/../pyproject.toml", "/%2e%2e/server.py", "/server.py", "/nope.html"])
 def test_server_rejects_other_paths(server, path):
     with pytest.raises(urllib.error.HTTPError) as err:

@@ -1,7 +1,5 @@
 # avfleet
 
-[![CI](https://github.com/JonathanLaneTech/avfleet/actions/workflows/ci.yml/badge.svg)](https://github.com/JonathanLaneTech/avfleet/actions/workflows/ci.yml)
-
 **Health monitoring, alerting and self-healing for an AV and network fleet.**
 
 avfleet checks every device the way a user depends on it: not "does it answer ping" but
@@ -116,6 +114,14 @@ max_per_hour = 3
 ```
 
 For UniFi, create a local (not Ubiquiti cloud) user on the console with a read-only role.
+
+The dashboard can carry your own name and logo, so an integrator can deploy it under their brand:
+
+```toml
+[web]
+title = "Your Company AV Fleet"
+logo = "~/.avfleet/logo.png"   # .png, .svg, .jpg or .webp
+```
 
 ## Running it
 
