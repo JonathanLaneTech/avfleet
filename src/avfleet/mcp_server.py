@@ -12,6 +12,7 @@ Tools come in two kinds:
   - ``maintenance``  start / end maintenance windows
   - ``self_healing`` run a device's configured self-healing action (e.g. restart Roon), honouring its own
                      safety precondition and the configured cooldown
+  - ``reboot``         reboot a device that has a ``[devices.reboot]`` action (TV, Roon app...)
   - ``lutron_buttons`` press a keypad button that exists in the processor's programming
 
 Every action is written to the event log with "via Claude", so the dashboard shows who did
@@ -27,7 +28,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import IO, Any
 
-from . import __version__, maintenance
+from . import __version__, maintenance, reboot
 from .actions import build_action
 from .checks.lutron import connect_paired, discover_buttons, press_button
 from .config import Config, DeviceConfig
@@ -231,6 +232,15 @@ class FleetMCP:
             raise ToolError(outcome.message)
         return {"device": dev.id, "action": cfg.action, "result": outcome.message}
 
+    def reboot_device(self, args):
+        try:
+            outcome = reboot.run(self.store, self.config, args["device"], via="Claude", now=self.clock())
+        except reboot.RebootError as exc:
+            raise ToolError(str(exc)) from None
+        if not outcome.ok:
+            raise ToolError(outcome.message)
+        return {"device": args["device"], "result": outcome.message}
+
     def press_keypad_button(self, args):
         dev = self._lutron(args.get("device"))
         button = str(args["button"]).strip()
@@ -288,6 +298,11 @@ class FleetMCP:
                  "It still honours the action's safety checks and cooldown. Confirm with the user first.",
                  {"type": "object", "properties": {"device": device}, "required": ["device"]},
                  self.run_self_healing, ACT, "self_healing"),
+            Tool("reboot_device", "Reboot or restart a device that has a reboot action configured (e.g. the TV, "
+                 "or the Roon app). Has a cooldown and the action's own safety checks. The device will be "
+                 "unavailable briefly. Confirm with the user first.",
+                 {"type": "object", "properties": {"device": device}, "required": ["device"]},
+                 self.reboot_device, ACT, "reboot"),
             Tool("press_keypad_button", "Press a Lutron keypad button (e.g. start a Natural Show). Only buttons that "
                  "exist in the processor's programming can be pressed; get ids from list_keypad_buttons. Confirm "
                  "with the user first.",

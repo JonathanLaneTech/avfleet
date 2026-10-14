@@ -133,7 +133,7 @@ async function postControl(path, payload, retried) {
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try { msg = (await res.json()).error || msg; } catch (e) { /* not JSON */ }
-    window.alert(`Couldn't change maintenance: ${msg}`);
+    window.alert(`That didn't work: ${msg}`);
     return false;
   }
   return true;
@@ -147,6 +147,14 @@ function maintControls(dev) {
     b.addEventListener("click", onClick);
     return b;
   };
+  if (dev.reboot && openPicker !== dev.id) {
+    row.appendChild(btn(dev.reboot.label, "ctl reboot", async () => {
+      const ok = window.confirm(`${dev.reboot.label}: ${dev.name}?\n\n`
+        + "It will be unavailable briefly. This is logged in the event log.");
+      if (!ok) return;
+      if (await postControl("/api/reboot", { device: dev.id })) refresh();
+    }));
+  }
   if (dev.maintenance) {
     row.appendChild(btn("End maintenance", "ctl end", async () => {
       if (await postControl("/api/maintenance/end", { device: dev.id })) refresh();
@@ -216,15 +224,41 @@ function renderGroups(devices) {
   }
 }
 
+const LOG_PREVIEW = 8;
+let showAllEvents = false;
+function logCollapsed() { try { return localStorage.getItem("avfleet-log-collapsed") === "1"; } catch (e) { return false; } }
+function setLogCollapsed(v) { try { localStorage.setItem("avfleet-log-collapsed", v ? "1" : "0"); } catch (e) { /* ignore */ } }
+
+function matchesFilter(e) {
+  if (eventFilter === "all") return true;
+  if (eventFilter === "claude") return /via Claude/.test(e.message);
+  if (eventFilter === "action") return e.kind === "action" || e.kind === "reboot";
+  return e.kind === eventFilter;
+}
+
 function renderEvents(events) {
   const list = document.getElementById("events");
+  const section = document.querySelector(".log");
+  const collapsed = logCollapsed();
+  section.classList.toggle("collapsed", collapsed);
+  document.getElementById("log-toggle").setAttribute("aria-expanded", String(!collapsed));
+  document.getElementById("log-count").textContent = events.length ? `(${events.length})` : "";
   list.replaceChildren();
-  const shown = events.filter((e) => eventFilter === "all" || e.kind === eventFilter
-    || (eventFilter === "claude" && /via Claude/.test(e.message)));
+  const more = document.getElementById("log-more");
+  more.replaceChildren();
+  if (collapsed) return;
+  const matching = events.filter(matchesFilter);
+  const shown = showAllEvents ? matching : matching.slice(0, LOG_PREVIEW);
+  if (matching.length > LOG_PREVIEW) {
+    const b = el("button", "ctl", showAllEvents ? "Show fewer" : `Show all ${matching.length}`);
+    b.type = "button";
+    b.addEventListener("click", () => { showAllEvents = !showAllEvents; renderEvents(lastData.events); });
+    more.appendChild(b);
+  }
   if (!shown.length) { const li = el("li"); li.appendChild(el("span", "empty", "No events yet.")); list.appendChild(li); return; }
   for (const e of shown) {
     const li = el("li");
-    const label = { action: "heal", maintenance: "maint" }[e.kind] || e.kind;
+    const label = { action: "heal", maintenance: "maint", reboot: "reboot" }[e.kind] || e.kind;
     li.append(el("span", "t", fmtTime(e.ts)), el("span", `kind ${e.kind}`, label), el("span", "m", e.message));
     list.appendChild(li);
   }
@@ -268,6 +302,11 @@ async function refresh() {
     stamp.classList.add("stale");
   }
 }
+
+document.getElementById("log-toggle").addEventListener("click", () => {
+  setLogCollapsed(!logCollapsed());
+  if (lastData) renderEvents(lastData.events);
+});
 
 document.querySelectorAll(".filters button").forEach((b) => b.addEventListener("click", () => {
   eventFilter = b.dataset.kind;

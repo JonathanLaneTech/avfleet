@@ -73,7 +73,8 @@ main { max-width: 1280px; margin: 0 auto; padding: 20px 24px 48px; }
 #events .t { font: 12px var(--mono); color: var(--muted); }
 #events .kind { font: 700 11px var(--mono); text-transform: uppercase; letter-spacing: .05em; }
 #events .kind.alert { color: var(--down); } #events .kind.action { color: var(--accent); }
-#events .kind.state { color: var(--degraded); } #events .kind.maintenance { color: var(--maint); } #events .kind.info { color: var(--muted); }
+#events .kind.state { color: var(--degraded); } #events .kind.maintenance { color: var(--maint); }
+#events .kind.reboot { color: var(--accent); } #events .kind.info { color: var(--muted); }
 #events .empty { display: block; color: var(--muted); }
 @media (max-width: 640px) {
   .top, main { padding-left: 16px; padding-right: 16px; }
@@ -102,3 +103,14 @@ main { max-width: 1280px; margin: 0 auto; padding: 20px 24px 48px; }
 .claude .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--claude);
   vertical-align: 1px; }
 .stat .typ { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+.ctl.reboot { margin-right: auto; color: var(--accent); }
+.ctl.reboot:hover { border-color: var(--accent); color: var(--accent); }
+.log-toggle { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.log-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.log-toggle .chev { width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px); transition: transform .15s; }
+.log.collapsed .log-toggle .chev { transform: rotate(-45deg); }
+.log-count { font-weight: 400; letter-spacing: 0; }
+.log.collapsed .filters, .log.collapsed #events, .log.collapsed .log-more { display: none; }
+.log-more { display: flex; justify-content: center; margin-top: 10px; }

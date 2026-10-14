@@ -21,7 +21,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .actions.base import Action, register_action
-from .config import Config, DeviceConfig, RemediationConfig
+from .config import Config, DeviceConfig, RebootConfig, RemediationConfig
 from .engine import Monitor
 from .models import ActionResult, CheckResult, Event, Status
 from .notifiers import LogNotifier
@@ -195,6 +195,8 @@ def build_demo(port: int = 8080, interval: int = 10) -> tuple[Config, Store, Mon
         d("tv", "Sony Bravia (K-75XR90)", "tv", "Video", host=local, protocol="sony_bravia"),
     ]
     devices[3].remediation = RemediationConfig(action="demo_roon_restart", after_failures=3, cooldown_s=60)
+    devices[3].reboot = RebootConfig(action="demo_roon_restart", label="Restart Roon")
+    devices[8].reboot = RebootConfig(action="bravia_reboot")
     db = Path(tempfile.mkdtemp(prefix="avfleet-demo-")) / "demo.db"
     config = Config(interval_s=interval, db_path=db, web_host="127.0.0.1", web_port=port, devices=devices)
     store = Store(db)

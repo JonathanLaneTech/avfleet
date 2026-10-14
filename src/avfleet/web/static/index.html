@@ -20,16 +20,19 @@
 <main>
   <section id="groups" aria-label="Devices"></section>
   <section class="log" aria-label="Event log">
-    <h2>Event log</h2>
+    <h2><button type="button" id="log-toggle" class="log-toggle" aria-expanded="true" aria-controls="events">
+      <span class="chev" aria-hidden="true"></span>Event log <span id="log-count" class="log-count"></span>
+    </button></h2>
     <div class="filters" role="group" aria-label="Filter events">
       <button data-kind="all" class="on">All</button>
       <button data-kind="alert">Alerts</button>
-      <button data-kind="action">Self-healing</button>
+      <button data-kind="action">Actions</button>
       <button data-kind="maintenance">Maintenance</button>
       <button data-kind="claude">Claude</button>
       <button data-kind="state">State changes</button>
     </div>
     <ol id="events"></ol>
+    <div id="log-more" class="log-more"></div>
   </section>
 </main>
 <script src="app.js"></script>

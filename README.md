@@ -185,6 +185,31 @@ network shared with guests or IoT devices you can require a PIN:
 pin = "${AVFLEET_PIN}"   # the dashboard asks for it once per browser
 ```
 
+## Reboot buttons
+
+Devices that tend to lock up can get a button on their tile:
+
+```toml
+[[devices]]
+id = "tv"
+type = "tv"
+# ...
+[devices.reboot]
+action = "bravia_reboot"   # Sony's REST API requestReboot
+label = "Reboot"
+cooldown_s = 300
+```
+
+Built in: `bravia_reboot` (Sony Bravia) and `roon_restart` (the Roon app, with its "not while
+the Core is upgrading" check). Every press asks for confirmation, honours the cooldown, and is
+logged with who asked ("via dashboard" or "via Claude").
+
+In a commercial install, the universal answer is an IP-controlled power device (WattBox,
+SurgeX, Panamax/BlueBOLT, Middle Atlantic), which can power-cycle anything with a plug,
+including devices whose makers offer no network reboot (an Apple TV, for instance). A reboot is
+just an action plugged into `[devices.reboot]`, so a power-cycle driver for one of those
+becomes a "Power cycle" button on any device without other changes.
+
 ## Ask Claude: the MCP server
 
 `avfleet mcp` turns the fleet into an [MCP](https://modelcontextprotocol.io) server, so Claude
@@ -205,6 +230,7 @@ maintenance windows, rather than reporting a fault.*
 | `list_keypad_buttons` | read | Lutron keypad buttons and their engravings, by room |
 | `start_maintenance` / `end_maintenance` | action: `maintenance` | Open or close maintenance windows |
 | `run_self_healing` | action: `self_healing` | Run a device's configured fix now (e.g. restart Roon), with its safety check and cooldown |
+| `reboot_device` | action: `reboot` | Press a device's reboot button (cooldown and confirmation as on the dashboard) |
 | `press_keypad_button` | action: `lutron_buttons` | Press a programmed Lutron keypad button (e.g. start a Natural Show) |
 
 Read tools are always available and annotated read-only. Actions are **opt-in by kind**;
@@ -213,7 +239,7 @@ a kind that isn't listed doesn't exist as far as Claude can see:
 ```toml
 [mcp]
 actions = ["maintenance"]                       # the default
-# actions = ["maintenance", "self_healing", "lutron_buttons"]
+# actions = ["maintenance", "self_healing", "reboot", "lutron_buttons"]
 ```
 
 Every action is logged as "via Claude" in the event log, button presses are limited to
@@ -293,7 +319,7 @@ GitHub Actions runs lint and tests on Ubuntu and macOS across Python 3.11 to 3.1
 - Savant and Control4 controller checks
 - SNMP for non-UniFi network gear; Prometheus `/metrics` endpoint
 - Per-room rollups ("Theater: ready") built from device dependencies
-- More actions: PoE port power-cycle through the UniFi API, Apple TV restart
+- Power-cycle drivers for IP power (WattBox, SurgeX) and PoE ports through the UniFi API
 
 ## License
 

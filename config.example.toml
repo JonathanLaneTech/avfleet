@@ -23,7 +23,7 @@ fail_threshold = 3        # consecutive failed checks before a DOWN alert (~3 mi
 notify_recovery = true
 
 [mcp]
-actions = ["maintenance"]   # opt-in action kinds for Claude: maintenance, self_healing, lutron_buttons
+actions = ["maintenance"]   # opt-in kinds for Claude: maintenance, self_healing, reboot, lutron_buttons
 
 [[notifiers]]
 type = "pushover"
@@ -84,6 +84,9 @@ cooldown_s = 900
 max_per_hour = 3
 [devices.remediation.options]
 busy_cpu = 15
+[devices.reboot]                 # adds a "Restart Roon" button (and a tool for Claude)
+action = "roon_restart"
+label = "Restart Roon"
 
 [[devices]]
 id = "yamaha"
@@ -124,6 +127,9 @@ group = "Video"
 [devices.options]
 protocol = "sony_bravia"
 psk = "${SONY_PSK}"              # TV: Settings > Network > IP control > Pre-Shared Key
+[devices.reboot]                 # adds a "Reboot" button; uses the TV's requestReboot API
+action = "bravia_reboot"
+cooldown_s = 300
 
 # --- Lighting ------------------------------------------------------------------------
 

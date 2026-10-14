@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from typing import Any
 
-from .. import maintenance
+from .. import maintenance, reboot
 from ..config import Config
 from ..store import Store
 
@@ -53,6 +53,7 @@ def build_status(config: Config, store: Store, now: float | None = None) -> dict
             "latency_24h": store.latency_series(dev.id, now=now),
             "self_healing": dev.remediation.action if dev.remediation else None,
             "maintenance": maint.get(dev.id),
+            "reboot": {"label": dev.reboot.label} if dev.reboot else None,
         })
     return {"generated_at": now, "interval_s": config.interval_s, "devices": devices,
             "events": store.events(limit=100),
@@ -125,7 +126,7 @@ def make_handler(config: Config, store: Store) -> type[BaseHTTPRequestHandler]:
 
         def do_POST(self):  # noqa: N802
             path = self.path.split("?", 1)[0]
-            if path not in ("/api/maintenance", "/api/maintenance/end"):
+            if path not in ("/api/maintenance", "/api/maintenance/end", "/api/reboot"):
                 return self._json(404, {"error": "not found"})
             problem = self._authorized()
             if problem == "pin":
@@ -138,6 +139,12 @@ def make_handler(config: Config, store: Store) -> type[BaseHTTPRequestHandler]:
             try:
                 body = json.loads(self.rfile.read(length))
                 device = str(body["device"])
+                if path == "/api/reboot":
+                    try:
+                        outcome = reboot.run(store, config, device, via="dashboard")
+                    except reboot.RebootError as exc:
+                        return self._json(409 if "moments ago" in str(exc) else 400, {"error": str(exc)})
+                    return self._json(200 if outcome.ok else 502, {"ok": outcome.ok, "message": outcome.message})
                 if path.endswith("/end"):
                     ended = maintenance.end(store, config, [device], via="dashboard")
                     return self._json(200, {"ended": ended})

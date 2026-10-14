@@ -31,6 +31,16 @@ class RemediationConfig:
 
 
 @dataclass(slots=True)
+class RebootConfig:
+    """A manual action exposed as a button (and an MCP tool): reboot a TV, restart an app..."""
+
+    action: str
+    label: str = "Reboot"
+    cooldown_s: int = 300
+    options: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
 class DeviceConfig:
     id: str
     name: str
@@ -41,6 +51,7 @@ class DeviceConfig:
     timeout_s: float = 5.0
     options: dict[str, Any] = field(default_factory=dict)
     remediation: RemediationConfig | None = None
+    reboot: RebootConfig | None = None
 
 
 @dataclass(slots=True)
@@ -103,6 +114,13 @@ def _device(raw: dict[str, Any], index: int) -> DeviceConfig:
             max_per_hour=int(rem.get("max_per_hour", 3)),
             options=dict(rem.get("options", {})),
         )
+    rb = raw.get("reboot")
+    reboot = None
+    if rb:
+        if "action" not in rb:
+            raise ConfigError(f"device '{raw['id']}': reboot needs an 'action'")
+        reboot = RebootConfig(action=rb["action"], label=str(rb.get("label", "Reboot")),
+                              cooldown_s=int(rb.get("cooldown_s", 300)), options=dict(rb.get("options", {})))
     return DeviceConfig(
         id=raw["id"],
         name=raw.get("name", raw["id"]),
@@ -113,6 +131,7 @@ def _device(raw: dict[str, Any], index: int) -> DeviceConfig:
         timeout_s=float(raw.get("timeout_s", 5.0)),
         options=dict(raw.get("options", {})),
         remediation=remediation,
+        reboot=reboot,
     )
 
 
