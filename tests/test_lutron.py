@@ -22,7 +22,8 @@ def qsx_routes(availability="Unknown", transfer="NotRequired", level=100):
             "Devices": [{"href": "/device/575"}, {"href": "/device/587"}]}}},
         "/device/575": {"Device": {"Name": "Enclosure Device", "DeviceType": "HWQSProcessor", "ModelNumber": "HQP7-2",
                                    "IsThisDevice": True, "OwnedLinks": [{"href": "/link/577"}, {"href": "/link/579"}],
-                                   "FirmwareImage": {"Firmware": {"DisplayName": "26.07.34f000"}}}},
+                                   "FirmwareImage": {"Firmware": {"DisplayName": "26.07.34f000"}},
+                                   "DeviceFirmwarePackage": {"Package": {"DisplayName": "002.025.035r000"}}}},
         "/device/587": {"Device": {"Name": "Gateway X", "DeviceType": "HWQSProcessor", "ModelNumber": "HQP7-RF",
                                    "OwnedLinks": [{"href": "/link/589"}]}},
         "/device/555": {"Device": {"Name": "1", "DeviceType": "KetraA20", "ModelNumber": "HW-A20",
@@ -128,7 +129,8 @@ def test_summary_healthy_single_zone(qsx):
     assert status is Status.UP
     assert detail == "1 Ketra fixture · Lamp set to 100% · 3500 K"
     assert m["firmware"] == "26.07.34f000" and m["ketra_total"] == 1 and m["zones_on"] == 1
-    assert m["availability_unknown"] == 1  # processor not reporting availability yet: shown, not failed
+    assert m["firmware_package"] == "002.025.035r000"
+    assert "availability_unknown" not in m  # presence isn't reported on QSX; nothing shown for it
 
 
 def test_summary_off(qsx):

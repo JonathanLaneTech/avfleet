@@ -123,6 +123,7 @@ class LutronDevice:
     availability: str = "Unknown"
     transfer: str = ""
     firmware: str = ""
+    firmware_package: str = ""
     zones: list[dict[str, Any]] = field(default_factory=list)
 
     @property
@@ -172,6 +173,7 @@ def walk(client: LeapClient) -> dict[str, Any]:
             device_type=dev.get("DeviceType", ""),
             model=dev.get("ModelNumber", ""),
             firmware=(dev.get("FirmwareImage") or {}).get("Firmware", {}).get("DisplayName", ""),
+            firmware_package=(dev.get("DeviceFirmwarePackage") or {}).get("Package", {}).get("DisplayName", ""),
         )
         status, st = client.read(f"{href}/status")
         if status.startswith("200"):
@@ -213,11 +215,10 @@ def summarize(topology: dict[str, Any]) -> tuple[Status, str, dict[str, Any]]:
     if processor:
         if processor.firmware:
             metrics["firmware"] = processor.firmware
+        if processor.firmware_package:
+            metrics["firmware_package"] = processor.firmware_package
         if processor.model:
             metrics["model"] = processor.model
-    unknown = [d for d in ketra if d.availability not in ("Available", "Unavailable")]
-    if ketra and len(unknown) == len(ketra):
-        metrics["availability_unknown"] = len(unknown)
     if unavailable:
         metrics["unavailable"] = [d.label for d in unavailable]
         names = ", ".join(d.label for d in unavailable[:3]) + ("…" if len(unavailable) > 3 else "")

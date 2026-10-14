@@ -133,7 +133,7 @@ contains the radio network's master key.
 **Field finding:** a HomeWorks QSX reports the level and colour it last *commanded* for a Ketra
 zone, not what the fixture is doing, and it does not expose fixture presence over LEAP. With a
 Ketra A20 unpowered for ten minutes, `Availability` stayed `Unknown` and the zone kept reporting
-100% / 3500 K. The dashboard therefore says "set to" and shows "fixture presence not reported".
+100% / 3500 K. The dashboard therefore says "set to" rather than implying the light is confirmed on.
 If a processor does report `Unavailable`, the tile turns degraded and names the fixture.
 
 The dashboard can carry your own name and logo, so an integrator can deploy it under their brand:
