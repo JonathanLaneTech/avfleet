@@ -1,5 +1,7 @@
 # avfleet
 
+[![CI](https://github.com/JonathanLaneTech/avfleet/actions/workflows/ci.yml/badge.svg)](https://github.com/JonathanLaneTech/avfleet/actions/workflows/ci.yml)
+
 **Health monitoring, alerting and self-healing for an AV and network fleet.**
 
 avfleet checks every device the way a user depends on it: not "does it answer ping" but
