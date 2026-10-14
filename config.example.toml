@@ -16,6 +16,7 @@ host = "0.0.0.0"   # reachable from your LAN; use 127.0.0.1 for this machine onl
 port = 8080
 # title = "Your Company AV Fleet"        # dashboard name (default "AV Fleet")
 # logo = "~/.avfleet/logo.png"           # optional .png, .svg, .jpg or .webp shown in the header
+# pin = "${AVFLEET_PIN}"                 # optional PIN for the dashboard's maintenance buttons
 
 [alerts]
 fail_threshold = 3        # consecutive failed checks before a DOWN alert (~3 min at 60 s)

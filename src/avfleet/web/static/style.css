@@ -80,3 +80,17 @@ main { max-width: 1280px; margin: 0 auto; padding: 20px 24px 48px; }
   #events li { grid-template-columns: 1fr; gap: 2px; }
   .stamp { margin-left: 0; width: 100%; }
 }
+
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; justify-content: flex-end;
+  border-top: 1px dashed var(--line); padding-top: 8px; margin-top: auto; }
+.notice + .controls { margin-top: 0; }
+.ctl-label { font-size: 12px; color: var(--muted); margin-right: auto; }
+.ctl { font: 600 12px var(--sans); padding: 5px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: transparent; color: var(--ink); }
+.ctl:hover { border-color: var(--maint); color: var(--maint); }
+.ctl.start { color: var(--muted); }
+.ctl.dur { border-color: color-mix(in srgb, var(--maint) 45%, var(--line)); color: var(--maint); }
+.ctl.end { background: var(--maint); border-color: var(--maint); color: #fff; }
+.ctl.end:hover { color: #fff; filter: brightness(1.08); }
+.ctl.cancel { color: var(--muted); }
+.ctl:focus-visible { outline: 2px solid var(--maint); outline-offset: 2px; }

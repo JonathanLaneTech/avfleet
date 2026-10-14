@@ -144,3 +144,77 @@ def test_server_rejects_other_paths(server, path):
     with pytest.raises(urllib.error.HTTPError) as err:
         urllib.request.urlopen(server + path)
     assert err.value.code == 404
+
+
+# --- maintenance controls -------------------------------------------------------------
+
+def _post(base, path, payload, headers=None):
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(base + path, data=data, method="POST",
+                                 headers={"Content-Type": "application/json", **(headers or {})})
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return resp.status, json.loads(resp.read())
+    except urllib.error.HTTPError as err:
+        return err.code, json.loads(err.read() or b"{}")
+
+
+@pytest.fixture
+def control_server():
+    servers = []
+
+    def make(pin=""):
+        cfg = _config()
+        cfg.web_pin = pin
+        s = Store(":memory:")
+        httpd = start_server(cfg, s)
+        servers.append(httpd)
+        return f"http://127.0.0.1:{httpd.server_address[1]}", s
+
+    yield make
+    for h in servers:
+        h.shutdown()
+        h.server_close()
+
+
+def test_dashboard_can_start_and_end_maintenance(control_server):
+    base, store = control_server()
+    status, body = _post(base, "/api/maintenance", {"device": "dev", "minutes": 30})
+    assert status == 200 and body == {"started": ["dev"], "minutes": 30}
+    assert "dev" in store.active_maintenance()
+    data = json.loads(urllib.request.urlopen(base + "/api/status").read())
+    assert data["devices"][0]["maintenance"]["reason"] == "set from dashboard"
+    assert data["controls"] == {"maintenance": True, "pin_required": False}
+    status, body = _post(base, "/api/maintenance/end", {"device": "dev"})
+    assert status == 200 and body == {"ended": ["dev"]}
+    assert store.active_maintenance() == {}
+
+
+def test_controls_reject_cross_origin_and_non_json(control_server):
+    base, store = control_server()
+    status, _ = _post(base, "/api/maintenance", {"device": "dev"}, {"Origin": "http://evil.example"})
+    assert status == 403
+    req = urllib.request.Request(base + "/api/maintenance", data=b"device=dev", method="POST",
+                                 headers={"Content-Type": "application/x-www-form-urlencoded"})
+    with pytest.raises(urllib.error.HTTPError) as err:
+        urllib.request.urlopen(req)
+    assert err.value.code == 403
+    assert store.active_maintenance() == {}
+
+
+def test_controls_validate_input(control_server):
+    base, _ = control_server()
+    assert _post(base, "/api/maintenance", {"device": "projector"})[0] == 400
+    assert _post(base, "/api/maintenance", {"device": "dev", "minutes": 0})[0] == 400
+    assert _post(base, "/api/maintenance", {"minutes": 5})[0] == 400
+    assert _post(base, "/api/other", {"device": "dev"})[0] == 404
+
+
+def test_pin_is_enforced_when_configured(control_server):
+    base, store = control_server(pin="4321")
+    assert _post(base, "/api/maintenance", {"device": "dev"})[0] == 401
+    assert _post(base, "/api/maintenance", {"device": "dev"}, {"X-AVFleet-PIN": "0000"})[0] == 401
+    assert store.active_maintenance() == {}
+    assert _post(base, "/api/maintenance", {"device": "dev"}, {"X-AVFleet-PIN": "4321"})[0] == 200
+    data = json.loads(urllib.request.urlopen(base + "/api/status").read())
+    assert data["controls"]["pin_required"] is True

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import threading
@@ -10,6 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from typing import Any
 
+from .. import maintenance
 from ..config import Config
 from ..store import Store
 
@@ -53,7 +55,8 @@ def build_status(config: Config, store: Store, now: float | None = None) -> dict
         })
     return {"generated_at": now, "interval_s": config.interval_s, "devices": devices,
             "events": store.events(limit=100),
-            "branding": {"title": config.web_title, "logo": logo_type(config) is not None}}
+            "branding": {"title": config.web_title, "logo": logo_type(config) is not None},
+            "controls": {"maintenance": True, "pin_required": bool(config.web_pin)}}
 
 
 def make_handler(config: Config, store: Store) -> type[BaseHTTPRequestHandler]:
@@ -98,6 +101,52 @@ def make_handler(config: Config, store: Store) -> type[BaseHTTPRequestHandler]:
             if not f.is_file() or suffix not in STATIC_TYPES:
                 return self._send(404, b"not found", "text/plain")
             return self._send(200, f.read_bytes(), STATIC_TYPES[suffix])
+
+        # --- controls --------------------------------------------------------------------
+        # The only write the dashboard can make is opening or closing a maintenance window.
+        # Guard rails: JSON only (a plain HTML form on another site can't send it), a browser
+        # Origin must match this host (stops other web pages driving it), small bodies only,
+        # and an optional PIN for networks shared with guests or IoT devices.
+
+        def _json(self, code: int, payload: dict) -> None:
+            self._send(code, json.dumps(payload).encode(), "application/json")
+
+        def _authorized(self) -> str | None:
+            if not (self.headers.get("Content-Type") or "").startswith("application/json"):
+                return "JSON required"
+            origin = self.headers.get("Origin")
+            if origin and origin.split("://", 1)[-1] != self.headers.get("Host", ""):
+                return "cross-origin request refused"
+            if config.web_pin and not hmac.compare_digest(self.headers.get("X-AVFleet-PIN", ""), config.web_pin):
+                return "pin"
+            return None
+
+        def do_POST(self):  # noqa: N802
+            path = self.path.split("?", 1)[0]
+            if path not in ("/api/maintenance", "/api/maintenance/end"):
+                return self._json(404, {"error": "not found"})
+            problem = self._authorized()
+            if problem == "pin":
+                return self._json(401, {"error": "PIN required"})
+            if problem:
+                return self._json(403, {"error": problem})
+            length = int(self.headers.get("Content-Length") or 0)
+            if not 0 < length <= 4096:
+                return self._json(400, {"error": "bad request"})
+            try:
+                body = json.loads(self.rfile.read(length))
+                device = str(body["device"])
+                if path.endswith("/end"):
+                    ended = maintenance.end(store, config, [device])
+                    return self._json(200, {"ended": ended})
+                minutes = int(body.get("minutes", 30))
+                if not 1 <= minutes <= 7 * 24 * 60:
+                    raise ValueError("minutes must be between 1 and 10080")
+                reason = str(body.get("reason") or "set from dashboard")[:120]
+                ids = maintenance.start(store, config, [device], minutes * 60, reason)
+                return self._json(200, {"started": ids, "minutes": minutes})
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                return self._json(400, {"error": str(exc) or "bad request"})
 
     return Handler
 

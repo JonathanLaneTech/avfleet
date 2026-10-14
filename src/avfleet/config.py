@@ -52,6 +52,7 @@ class Config:
     web_port: int = 8080
     web_title: str = "AV Fleet"
     web_logo: Path | None = None
+    web_pin: str = ""
     fail_threshold: int = 3
     notify_recovery: bool = True
     notifiers: list[dict[str, Any]] = field(default_factory=list)
@@ -140,6 +141,7 @@ def parse_config(data: dict[str, Any]) -> Config:
         web_port=int(web.get("port", 8080)),
         web_title=str(web.get("title", "AV Fleet")),
         web_logo=Path(web["logo"]).expanduser() if web.get("logo") else None,
+        web_pin=str(web.get("pin", "") or ""),
         fail_threshold=int(alerts.get("fail_threshold", 3)),
         notify_recovery=bool(alerts.get("notify_recovery", True)),
         notifiers=list(data.get("notifiers", [])),

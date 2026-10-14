@@ -158,7 +158,9 @@ exits. It runs in the user session so the Roon restart can quit and relaunch the
 
 ## Maintenance mode
 
-When you're working on something, tell avfleet so it doesn't page you or try to fix it:
+When you're working on something, tell avfleet so it doesn't page you or try to fix it.
+The quickest way is the **Maintenance** button on the device's tile: pick 15 minutes to
+2 hours, and the button becomes **End maintenance**. The same is available from the command line:
 
 ```bash
 avfleet maintain -c config.toml lutron 30m --reason "programming transfer"
@@ -173,6 +175,15 @@ reason. When the window ends, failure counting starts fresh, so a device that's 
 pages normally after `fail_threshold` checks. Devices that announce their own maintenance get
 an automatic notice on the tile: UniFi "Firmware updating", a Lutron programming transfer,
 or a Roon Core busy updating its library (self-healing waits for it).
+
+Opening or closing a maintenance window is the only change the dashboard can make. Requests
+must be JSON from the dashboard's own origin, so another web page can't trigger them, and on a
+network shared with guests or IoT devices you can require a PIN:
+
+```toml
+[web]
+pin = "${AVFLEET_PIN}"   # the dashboard asks for it once per browser
+```
 
 ## Extending
 

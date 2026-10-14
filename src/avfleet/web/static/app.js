@@ -101,7 +101,68 @@ function tile(dev) {
   } else if (dev.metrics && dev.metrics.notice) {
     t.appendChild(el("div", "notice warn", dev.metrics.notice));
   }
+  if (lastData && lastData.controls && lastData.controls.maintenance) t.appendChild(maintControls(dev));
   return t;
+}
+
+// --- maintenance controls --------------------------------------------------------------
+let openPicker = null; // device id whose duration picker is open (survives the 15 s re-render)
+const DURATIONS = [[15, "15 min"], [30, "30 min"], [60, "1 hour"], [120, "2 hours"]];
+
+function storedPin() { try { return localStorage.getItem("avfleet-pin") || ""; } catch (e) { return ""; } }
+function savePin(p) { try { localStorage.setItem("avfleet-pin", p); } catch (e) { /* private mode */ } }
+
+async function postControl(path, payload, retried) {
+  const headers = { "Content-Type": "application/json" };
+  const pin = storedPin();
+  if (pin) headers["X-AVFleet-PIN"] = pin;
+  const res = await fetch(path, { method: "POST", headers, body: JSON.stringify(payload) });
+  if (res.status === 401 && !retried) {
+    const entered = window.prompt("Dashboard PIN");
+    if (entered === null) return false;
+    savePin(entered.trim());
+    return postControl(path, payload, true);
+  }
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try { msg = (await res.json()).error || msg; } catch (e) { /* not JSON */ }
+    window.alert(`Couldn't change maintenance: ${msg}`);
+    return false;
+  }
+  return true;
+}
+
+function maintControls(dev) {
+  const row = el("div", "controls");
+  const btn = (label, cls, onClick) => {
+    const b = el("button", cls, label);
+    b.type = "button";
+    b.addEventListener("click", onClick);
+    return b;
+  };
+  if (dev.maintenance) {
+    row.appendChild(btn("End maintenance", "ctl end", async () => {
+      if (await postControl("/api/maintenance/end", { device: dev.id })) refresh();
+    }));
+  } else if (openPicker === dev.id) {
+    row.appendChild(el("span", "ctl-label", "Maintenance for"));
+    for (const [mins, label] of DURATIONS) {
+      row.appendChild(btn(label, "ctl dur", async () => {
+        openPicker = null;
+        if (await postControl("/api/maintenance", { device: dev.id, minutes: mins })) refresh(); else render();
+      }));
+    }
+    row.appendChild(btn("Cancel", "ctl cancel", () => { openPicker = null; render(); }));
+  } else {
+    row.appendChild(btn("Maintenance", "ctl start", () => { openPicker = dev.id; render(); }));
+  }
+  return row;
+}
+
+function render() {
+  if (!lastData) return;
+  renderSummary(lastData.devices);
+  renderGroups(lastData.devices);
 }
 
 function renderSummary(devices) {
