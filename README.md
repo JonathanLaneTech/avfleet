@@ -4,18 +4,21 @@
 
 **Health monitoring, alerting and self-healing for an AV and network fleet.**
 
-avfleet checks every device the way a user depends on it: not "does it answer ping" but
-"is the service actually working". It asks the Yamaha for its status over Yamaha Extended
-Control, the Kaleidescape over its control protocol, the TV over its REST API, and the
-switch over the UniFi controller API. It shows the results on a local dashboard, pages a
-human when something breaks or recovers, and fixes known failures on its own.
+My Roon music server kept hanging after software updates, and the fix was always the same:
+notice, then restart it by hand. avfleet started as a small script that did that restart
+automatically, and grew into a monitor for the whole system. It watches every device,
+pages me when something breaks, fixes known failures on its own, and lets Claude explain
+what happened.
 
 ![Dashboard](docs/dashboard.png)
 
-It started as a 40-line bash watchdog that restarted a Roon music server when it hung
-after updates. That script worked, but it had no history, no visibility into the rest of
-the system, and no way to add a second fix. avfleet is that idea rebuilt as a small
-platform: pluggable checks, pluggable actions, one policy engine, and tests.
+Under the hood, avfleet checks each device the way a user depends on it: not "does it answer
+ping" but "is the service actually working". It asks the Yamaha for its status over Yamaha
+Extended Control, the Kaleidescape over its control protocol, the TV over its REST API, the
+switch over the UniFi controller API, and the Lutron processor over LEAP. The original script
+had no history, no view of the rest of the system, and no room for a second fix; avfleet is
+that idea rebuilt as a small platform: pluggable checks, pluggable actions, one policy engine,
+and tests.
 
 ## Try it without any hardware
 
