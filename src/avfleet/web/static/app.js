@@ -57,6 +57,8 @@ const METRIC_LABELS = {
   cpu_pct: (v) => `cpu ${Math.round(v)}%`, mem_pct: (v) => `mem ${Math.round(v)}%`,
   upgrade_available: () => "update available", volume: (v) => `vol ${v}`,
   core_cpu: (v) => `core cpu ${Math.round(v)}%`,
+  firmware: (v) => `fw ${v}`, version: (v) => `fw ${v}`,
+  availability_unknown: () => "availability not reported",
 };
 
 function chips(dev) {

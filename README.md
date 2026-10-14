@@ -84,7 +84,7 @@ Design choices worth calling out:
 | Kaleidescape | `kaleidescape` | Kaleidescape control protocol, TCP 10000, `GET_DEVICE_POWER_STATE` | Replies with status 000; reports on/standby. Unsolicited events are skipped by matching sequence numbers. |
 | Apple TV, HomePod | `apple_tv`, `homepod` | AirPlay `GET /info` (TCP 7000), binary plist | AirPlay service answering; reports model and OS build. |
 | Sony Bravia (K-75XR90) | `tv` (`protocol = "sony_bravia"`) | Bravia REST `POST /sony/system getPowerStatus` with pre-shared key | API answers; reports active/standby. Samsung and generic TCP adapters included. |
-| Lutron HomeWorks QSX (Ketra) | `lutron_leap` | LEAP over TLS, port 8081 | TLS handshake (or `/server` read with a paired client certificate). |
+| Lutron HomeWorks QSX and its Ketra fixtures | `lutron_leap` | LEAP over mutual TLS, port 8081 | **Paired:** walks the processor's own view (project → devices → Clear Connect X link nodes → per-device status → zones) and reports every Ketra fixture, its zone level and colour temperature, processor firmware, and pending programming transfers. Any fixture the processor marks `Unavailable` → degraded, named on the tile. **Unpaired** (e.g. a Gateway X): TLS handshake. |
 | Anything else | `tcp`, `http` | TCP port / HTTP status | Port open / expected status code. |
 
 > Protocol details for Kaleidescape replies and the Roon port reflect public documentation
@@ -114,6 +114,19 @@ max_per_hour = 3
 ```
 
 For UniFi, create a local (not Ubiquiti cloud) user on the console with a read-only role.
+
+For Lutron, pair once with `lap-pair` from the open-source
+[pylutron-caseta](https://github.com/gurumitts/pylutron-caseta) project:
+
+```bash
+pip install "pylutron-caseta[cli]"
+lap-pair <processor-ip>     # writes certificates to ~/.config/pylutron_caseta/
+```
+
+avfleet finds those certificates automatically for a `lutron_leap` device with the same host.
+LEAP has no read-only pairing, so the certificate could control lights; avfleet only ever sends
+`ReadRequest`s, and deliberately never reads `/link/<id>`, which on Clear Connect X links
+contains the radio network's master key.
 
 The dashboard can carry your own name and logo, so an integrator can deploy it under their brand:
 
