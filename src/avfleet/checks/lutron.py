@@ -17,6 +17,12 @@ The walk (QSX does not support bulk status queries, so it goes device by device)
     /device/<id>/status              -> Availability, ConfigurationTransferStatus
     /zone/<id> + /zone/<id>/status   -> zone name, level, colour temperature
 
+What LEAP on a QSX does *not* tell you: whether a fixture is physically present. Field
+testing (unpowering a Ketra A20) showed ``Availability`` staying ``Unknown``, the zone still
+reporting its commanded level and colour, and the fixture remaining in the link's node list.
+So zone state is shown as "set to", and missing fixtures can only be detected if a future
+firmware starts populating ``Availability`` (the check already handles ``Unavailable``).
+
 ``/link/<id>`` itself is never read: on Clear Connect X links it includes the network
 master key, which this tool has no reason to handle. Bodies are parsed, never logged.
 """
@@ -223,7 +229,8 @@ def summarize(topology: dict[str, Any]) -> tuple[Status, str, dict[str, Any]]:
     if len(zones) == 1:
         z = zones[0]
         level = z.get("level")
-        state = "off" if not level else f"{level}%" + (f" · {z['kelvin']} K" if z.get("kelvin") else "")
+        # The processor reports the level it last commanded, not measured output (see module docstring).
+        state = "set off" if not level else f"set to {level}%" + (f" · {z['kelvin']} K" if z.get("kelvin") else "")
         detail += f" · {z.get('name') or 'zone'} {state}"
     elif zones:
         detail += f" · {metrics['zones_on']}/{len(zones)} zones on"
