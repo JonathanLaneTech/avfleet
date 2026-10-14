@@ -78,9 +78,10 @@ function chips(dev) {
 function tile(dev) {
   const t = el("article", "tile");
   t.dataset.status = dev.status;
-  t.setAttribute("aria-label", `${dev.name}: ${dev.status}`);
+  if (dev.maintenance) t.dataset.maintenance = "1";
+  t.setAttribute("aria-label", `${dev.name}: ${dev.maintenance ? "in maintenance" : dev.status}`);
   const head = el("div", "row");
-  head.append(el("div", "name", dev.name), el("div", "pill", dev.status));
+  head.append(el("div", "name", dev.name), el("div", "pill", dev.maintenance ? "maintenance" : dev.status));
   t.appendChild(head);
   t.appendChild(el("div", "detail", dev.detail));
   const stats = el("div", "stats");
@@ -93,18 +94,25 @@ function tile(dev) {
   t.appendChild(stats);
   t.appendChild(sparkline(dev.latency_24h || []));
   t.appendChild(chips(dev));
+  if (dev.maintenance) {
+    const until = new Date(dev.maintenance.until * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const why = dev.maintenance.reason ? ` · ${dev.maintenance.reason}` : "";
+    t.appendChild(el("div", "notice maint", `In maintenance until ${until}${why}. Alerts and self-healing paused.`));
+  } else if (dev.metrics && dev.metrics.notice) {
+    t.appendChild(el("div", "notice warn", dev.metrics.notice));
+  }
   return t;
 }
 
 function renderSummary(devices) {
   const box = document.getElementById("summary");
   box.replaceChildren();
-  const counts = { up: 0, degraded: 0, down: 0, unknown: 0 };
-  devices.forEach((d) => { counts[d.status] = (counts[d.status] || 0) + 1; });
-  for (const s of ["down", "degraded", "up", "unknown"]) {
+  const counts = { up: 0, degraded: 0, down: 0, unknown: 0, maintenance: 0 };
+  devices.forEach((d) => { const k = d.maintenance ? "maintenance" : d.status; counts[k] = (counts[k] || 0) + 1; });
+  for (const s of ["down", "degraded", "maintenance", "up", "unknown"]) {
     if (!counts[s] && s !== "up") continue;
     const c = el("span", "count");
-    c.style.color = `var(--${s})`;
+    c.style.color = `var(--${s === "maintenance" ? "maint" : s})`;
     const b = el("b", null, String(counts[s]));
     c.append(b, document.createTextNode(` ${s}`));
     box.appendChild(c);
@@ -133,7 +141,8 @@ function renderEvents(events) {
   if (!shown.length) { const li = el("li"); li.appendChild(el("span", "empty", "No events yet.")); list.appendChild(li); return; }
   for (const e of shown) {
     const li = el("li");
-    li.append(el("span", "t", fmtTime(e.ts)), el("span", `kind ${e.kind}`, e.kind === "action" ? "heal" : e.kind), el("span", "m", e.message));
+    const label = { action: "heal", maintenance: "maint" }[e.kind] || e.kind;
+    li.append(el("span", "t", fmtTime(e.ts)), el("span", `kind ${e.kind}`, label), el("span", "m", e.message));
     list.appendChild(li);
   }
 }
@@ -168,7 +177,7 @@ async function refresh() {
     stamp.textContent = stale ? `monitor stalled: last check ${ago(newest)} ago` : `updated ${new Date().toLocaleTimeString()}`;
     stamp.classList.toggle("stale", Boolean(stale));
     applyBranding(lastData.branding || {});
-    const down = lastData.devices.filter((d) => d.status === "down").length;
+    const down = lastData.devices.filter((d) => d.status === "down" && !d.maintenance).length;
     document.title = down ? `(${down} down) ${brandTitle}` : brandTitle;
   } catch (err) {
     stamp.textContent = `dashboard offline: ${err.message}`;

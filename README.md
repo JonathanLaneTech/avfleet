@@ -156,6 +156,24 @@ On macOS, `bash deploy/install-macos.sh ~/.avfleet/config.toml` creates a virtua
 installs avfleet and registers a launchd agent that starts at login and restarts if it
 exits. It runs in the user session so the Roon restart can quit and relaunch the app.
 
+## Maintenance mode
+
+When you're working on something, tell avfleet so it doesn't page you or try to fix it:
+
+```bash
+avfleet maintain -c config.toml lutron 30m --reason "programming transfer"
+avfleet maintain -c config.toml all 1h --reason "network firmware"
+avfleet maintain -c config.toml --list
+avfleet maintain -c config.toml --end lutron
+```
+
+During a window the device is still checked and shown live, but alerts and self-healing are
+paused and those checks are excluded from uptime. The tile turns purple with the end time and
+reason. When the window ends, failure counting starts fresh, so a device that's still broken
+pages normally after `fail_threshold` checks. Devices that announce their own maintenance get
+an automatic notice on the tile: UniFi "Firmware updating", a Lutron programming transfer,
+or a Roon Core busy updating its library (self-healing waits for it).
+
 ## Extending
 
 A new device type is one class:

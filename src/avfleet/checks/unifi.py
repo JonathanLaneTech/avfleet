@@ -25,6 +25,7 @@ STATE_NAMES = {
     0: "disconnected", 1: "connected", 2: "pending adoption", 4: "upgrading",
     5: "provisioning", 6: "heartbeat missed", 7: "adopting", 9: "adoption failed", 11: "isolated",
 }
+NOTICES = {4: "Firmware updating", 5: "Provisioning", 7: "Adopting"}
 
 
 class UnifiSession:
@@ -117,6 +118,8 @@ def summarize_device(dev: dict[str, Any], expected_up_ports: list[int] | None = 
         if down_expected:
             metrics["expected_ports_down"] = down_expected
 
+    if state in NOTICES:
+        metrics["notice"] = NOTICES[state]
     if state != 1:
         name = STATE_NAMES.get(state, f"state {state}")
         status = Status.DOWN if state in (0, 6, 9) else Status.DEGRADED

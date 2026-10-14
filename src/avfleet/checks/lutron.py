@@ -224,6 +224,7 @@ def summarize(topology: dict[str, Any]) -> tuple[Status, str, dict[str, Any]]:
         names = ", ".join(d.label for d in unavailable[:3]) + ("…" if len(unavailable) > 3 else "")
         return Status.DEGRADED, f"{len(unavailable)} unavailable: {names}", metrics
     if transfer:
+        metrics["notice"] = f"Programming transfer {transfer[0].transfer.lower()}"
         return Status.DEGRADED, f"programming transfer {transfer[0].transfer.lower()} on {transfer[0].label}", metrics
     noun = "Ketra fixture" if len(ketra) == 1 else "Ketra fixtures"
     detail = f"{len(ketra)} {noun}"

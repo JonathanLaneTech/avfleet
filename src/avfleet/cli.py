@@ -51,6 +51,36 @@ def cmd_check(args) -> int:
     return worst
 
 
+def cmd_maintain(args) -> int:
+    from . import maintenance
+
+    config = load_config(args.config)
+    store = Store(config.db_path)
+    try:
+        if args.list or (not args.devices and not args.end):
+            lines = maintenance.describe(store, config)
+            print("\n".join(lines) if lines else "No devices in maintenance.")
+            return 0
+        if args.end:
+            ended = maintenance.end(store, config, args.devices or ["all"])
+            print(f"Ended maintenance for: {', '.join(ended)}" if ended else "Nothing was in maintenance.")
+            return 0
+        if len(args.devices) < 2:
+            print("usage: avfleet maintain DEVICE [DEVICE ...] DURATION   (e.g. lutron 30m, or all 1h)",
+                  file=sys.stderr)
+            return 2
+        *names, duration = args.devices
+        seconds = maintenance.parse_duration(duration)
+        ids = maintenance.start(store, config, names, seconds, args.reason or "")
+        print(f"In maintenance for {duration}: {', '.join(ids)}")
+        return 0
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        store.close()
+
+
 def cmd_demo(args) -> int:
     from .demo import run_demo
 
@@ -79,6 +109,16 @@ def main(argv: list[str] | None = None) -> int:
     chk.add_argument("-c", "--config", default="config.toml")
     chk.add_argument("device", nargs="*", help="limit to these device ids")
     chk.set_defaults(func=cmd_check)
+
+    mnt = sub.add_parser("maintain", help="pause alerts and self-healing for devices while you work on them",
+                         description="avfleet maintain lutron 30m | avfleet maintain all 1h --reason 'firmware' | "
+                                     "avfleet maintain --end lutron | avfleet maintain --list")
+    mnt.add_argument("-c", "--config", default="config.toml")
+    mnt.add_argument("devices", nargs="*", help="device ids (or 'all') followed by a duration, e.g. lutron 30m")
+    mnt.add_argument("--reason", help="shown on the dashboard and in the event log")
+    mnt.add_argument("--end", action="store_true", help="end maintenance now for the listed devices (default: all)")
+    mnt.add_argument("--list", action="store_true", help="show devices currently in maintenance")
+    mnt.set_defaults(func=cmd_maintain)
 
     demo = sub.add_parser("demo", help="run the monitor and dashboard against simulated devices")
     demo.add_argument("--port", type=int, default=8080)

@@ -62,5 +62,6 @@ class RoonCheck(Check):
             detail = f"Core not accepting connections on {port}: {exc.strerror or exc}"
             if metrics.get("core_cpu", 0) >= 15:
                 detail += f" (Core busy at {metrics['core_cpu']:.0f}% CPU, possibly updating)"
+                metrics["notice"] = "Core busy, likely updating: self-healing waits"
             return self.result(Status.DOWN, detail, metrics=metrics)
         return self.result(Status.UP, f"Core serving on {port}", latency_ms=ms, metrics=metrics)

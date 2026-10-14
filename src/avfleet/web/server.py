@@ -32,6 +32,7 @@ def logo_type(config: Config) -> str | None:
 def build_status(config: Config, store: Store, now: float | None = None) -> dict[str, Any]:
     now = now or time.time()
     devices = []
+    maint = store.active_maintenance(now)
     for dev in config.enabled_devices:
         latest = store.latest(dev.id)
         devices.append({
@@ -48,6 +49,7 @@ def build_status(config: Config, store: Store, now: float | None = None) -> dict
             "uptime_24h": store.uptime(dev.id, now=now),
             "latency_24h": store.latency_series(dev.id, now=now),
             "self_healing": dev.remediation.action if dev.remediation else None,
+            "maintenance": maint.get(dev.id),
         })
     return {"generated_at": now, "interval_s": config.interval_s, "devices": devices,
             "events": store.events(limit=100),

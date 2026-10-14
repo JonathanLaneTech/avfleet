@@ -6,6 +6,9 @@ Alerting rules (per device):
   * Recovery is announced on the first healthy check after a DOWN alert.
   * DEGRADED and UNKNOWN are logged as events, not paged.
 
+Maintenance windows (``avfleet maintain``): the device is still checked and recorded, but
+nothing pages and nothing self-heals, and those checks don't count against uptime.
+
 Self-healing rules (per device with a [devices.remediation] table):
   * Fires after ``after_failures`` consecutive failures, if the action's own precondition
     agrees (e.g. Roon is not mid-upgrade).
@@ -61,6 +64,7 @@ class DeviceState:
     alerted_down: bool = False
     last_status: Status | None = None
     policy: RemediationPolicy | None = None
+    in_maintenance: bool = False
 
 
 class Monitor:
@@ -107,7 +111,9 @@ class Monitor:
         dev = state.device
         now = self.clock()
         result.timestamp = now
-        self.store.add_result(result)
+        in_maint = dev.id in self.store.active_maintenance(now)
+        self.store.add_result(result, maintenance=in_maint)
+        self._track_maintenance(state, in_maint)
 
         if state.last_status is not None and result.status != state.last_status:
             self._event(dev.id, "state", f"{dev.name}: {state.last_status.value} -> {result.status.value}"
@@ -116,6 +122,9 @@ class Monitor:
             self._event(dev.id, "info", f"{dev.name}: first check {result.status.value}"
                         + (f" ({result.detail})" if result.detail else ""))
         state.last_status = result.status
+
+        if in_maint:
+            return  # checked and recorded, but no paging and no self-healing while someone is working on it
 
         if result.status.is_failure:
             state.consecutive_failures += 1
@@ -129,6 +138,18 @@ class Monitor:
                 self._alert(dev, f"{dev.name} recovered", result.detail or result.status.value)
             state.alerted_down = False
             state.consecutive_failures = 0
+
+    def _track_maintenance(self, state: DeviceState, in_maint: bool) -> None:
+        if in_maint == state.in_maintenance:
+            return
+        state.in_maintenance = in_maint
+        # Either edge starts the failure count fresh: nothing during the window counts toward a page.
+        state.consecutive_failures = 0
+        state.alerted_down = False
+        if not in_maint:
+            last = self.store.last_maintenance(state.device.id)
+            if last and not last["ended_early"]:  # an early end was already logged by whoever ended it
+                self._event(state.device.id, "maintenance", f"{state.device.name}: maintenance window ended")
 
     def _maybe_remediate(self, state: DeviceState, now: float) -> None:
         policy = state.policy
