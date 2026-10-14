@@ -57,6 +57,7 @@ class Config:
     notify_recovery: bool = True
     notifiers: list[dict[str, Any]] = field(default_factory=list)
     devices: list[DeviceConfig] = field(default_factory=list)
+    mcp_actions: list[str] = field(default_factory=lambda: ["maintenance"])
 
     @property
     def enabled_devices(self) -> list[DeviceConfig]:
@@ -145,6 +146,7 @@ def parse_config(data: dict[str, Any]) -> Config:
         fail_threshold=int(alerts.get("fail_threshold", 3)),
         notify_recovery=bool(alerts.get("notify_recovery", True)),
         notifiers=list(data.get("notifiers", [])),
+        mcp_actions=[str(a) for a in data.get("mcp", {}).get("actions", ["maintenance"])],
         devices=devices,
     )
 

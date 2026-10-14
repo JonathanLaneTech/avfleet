@@ -22,6 +22,9 @@ port = 8080
 fail_threshold = 3        # consecutive failed checks before a DOWN alert (~3 min at 60 s)
 notify_recovery = true
 
+[mcp]
+actions = ["maintenance"]   # opt-in action kinds for Claude: maintenance, self_healing, lutron_buttons
+
 [[notifiers]]
 type = "pushover"
 token = "${PUSHOVER_TOKEN}"

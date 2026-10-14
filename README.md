@@ -185,6 +185,54 @@ network shared with guests or IoT devices you can require a PIN:
 pin = "${AVFLEET_PIN}"   # the dashboard asks for it once per browser
 ```
 
+## Ask Claude: the MCP server
+
+`avfleet mcp` turns the fleet into an [MCP](https://modelcontextprotocol.io) server, so Claude
+can answer questions about it ("is everything healthy?", "why did Roon go down last night?",
+"is the theater ready?") and, if you allow it, take actions.
+
+| Tool | Kind | What it does |
+|---|---|---|
+| `fleet_status` | read | Every device's status, detail, response time, 24 h uptime, maintenance, notices |
+| `device_detail` | read | One device: metrics, uptime and **outage windows** over a period, recent events |
+| `recent_events` | read | The event log, filterable by device, kind and time |
+| `list_keypad_buttons` | read | Lutron keypad buttons and their engravings, by room |
+| `start_maintenance` / `end_maintenance` | action: `maintenance` | Open or close maintenance windows |
+| `run_self_healing` | action: `self_healing` | Run a device's configured fix now (e.g. restart Roon), with its safety check and cooldown |
+| `press_keypad_button` | action: `lutron_buttons` | Press a programmed Lutron keypad button (e.g. start a Natural Show) |
+
+Read tools are always available and annotated read-only. Actions are **opt-in by kind**;
+a kind that isn't listed doesn't exist as far as Claude can see:
+
+```toml
+[mcp]
+actions = ["maintenance"]                       # the default
+# actions = ["maintenance", "self_healing", "lutron_buttons"]
+```
+
+Every action is logged as "via Claude" in the event log, button presses are limited to
+buttons that exist in the processor's own programming, and MCP clients ask you to approve
+each tool call.
+
+**Claude Desktop, with avfleet on another machine.** The server speaks MCP over stdio, so
+Claude Desktop can start it over SSH; nothing is exposed to the network. Set up key-based SSH
+to the monitoring host, then in Claude Desktop open **Settings → Developer → Edit Config**:
+
+```json
+{
+  "mcpServers": {
+    "avfleet": {
+      "command": "ssh",
+      "args": ["-T", "-o", "BatchMode=yes", "user@monitor-host",
+               "~/.avfleet/venv/bin/avfleet mcp -c ~/.avfleet/config.toml"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop and avfleet appears under connectors. The server is standard-library
+Python and is tested against the official MCP client library.
+
 ## Extending
 
 A new device type is one class:
@@ -232,7 +280,6 @@ GitHub Actions runs lint and tests on Ubuntu and macOS across Python 3.11 to 3.1
 
 ## Roadmap
 
-- Lutron LEAP pairing and Ketra/zone status through the QSX
 - Savant and Control4 controller checks
 - SNMP for non-UniFi network gear; Prometheus `/metrics` endpoint
 - Per-room rollups ("Theater: ready") built from device dependencies

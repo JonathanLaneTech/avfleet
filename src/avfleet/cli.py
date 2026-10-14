@@ -81,6 +81,20 @@ def cmd_maintain(args) -> int:
         store.close()
 
 
+def cmd_mcp(args) -> int:
+    """MCP server on stdio. stdout carries the protocol, so all logging goes to stderr."""
+    from .mcp_server import FleetMCP
+
+    logging.getLogger().setLevel(logging.WARNING)
+    config = load_config(args.config)
+    store = Store(config.db_path)
+    try:
+        FleetMCP(config, store).serve()
+    finally:
+        store.close()
+    return 0
+
+
 def cmd_demo(args) -> int:
     from .demo import run_demo
 
@@ -119,6 +133,10 @@ def main(argv: list[str] | None = None) -> int:
     mnt.add_argument("--end", action="store_true", help="end maintenance now for the listed devices (default: all)")
     mnt.add_argument("--list", action="store_true", help="show devices currently in maintenance")
     mnt.set_defaults(func=cmd_maintain)
+
+    mcp = sub.add_parser("mcp", help="run as an MCP server on stdio (for Claude Desktop and other MCP clients)")
+    mcp.add_argument("-c", "--config", default="config.toml")
+    mcp.set_defaults(func=cmd_mcp)
 
     demo = sub.add_parser("demo", help="run the monitor and dashboard against simulated devices")
     demo.add_argument("--port", type=int, default=8080)

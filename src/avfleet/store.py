@@ -172,5 +172,26 @@ class Store:
         nxt = self._q("SELECT MIN(ts) AS ts FROM results WHERE device_id=? AND ts > ?", (device_id, prev))
         return nxt[0]["ts"]
 
+    def results_since(self, device_id: str, since: float) -> list[dict[str, Any]]:
+        rows = self._q("SELECT ts, status, detail, maintenance FROM results WHERE device_id=? AND ts>=? ORDER BY ts",
+                       (device_id, since))
+        return [dict(r) for r in rows]
+
+    def events_for(self, device_id: str | None = None, kind: str | None = None, limit: int = 50,
+                   since: float | None = None) -> list[dict[str, Any]]:
+        sql, args = "SELECT * FROM events WHERE 1=1", []
+        if device_id:
+            sql += " AND device_id=?"
+            args.append(device_id)
+        if kind:
+            sql += " AND kind=?"
+            args.append(kind)
+        if since:
+            sql += " AND ts>=?"
+            args.append(since)
+        sql += " ORDER BY ts DESC LIMIT ?"
+        args.append(limit)
+        return [dict(r) for r in self._q(sql, tuple(args))]
+
     def events(self, limit: int = 100) -> list[dict[str, Any]]:
         return [dict(r) for r in self._q("SELECT * FROM events ORDER BY ts DESC LIMIT ?", (limit,))]

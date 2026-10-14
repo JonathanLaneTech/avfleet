@@ -88,6 +88,9 @@ class LeapClient:
         tag = f"avfleet-{next(self._tags)}"
         msg = {"CommuniqueType": "ReadRequest", "Header": {"Url": url, "ClientTag": tag}}
         self.sock.sendall((json.dumps(msg) + "\r\n").encode())
+        return self._await(tag, url)
+
+    def _await(self, tag: str, url: str) -> tuple[str, dict[str, Any]]:
         deadline = time.monotonic() + self.timeout
         while time.monotonic() < deadline:
             while b"\r\n" in self._buf:
@@ -106,6 +109,13 @@ class LeapClient:
                 raise LeapError("processor closed the connection")
             self._buf += chunk
         raise LeapError(f"no reply to {url}")
+
+    def create(self, url: str, body: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        """Send a CreateRequest (used only for explicit, user-approved actions such as a keypad press)."""
+        tag = f"avfleet-{next(self._tags)}"
+        msg = {"CommuniqueType": "CreateRequest", "Header": {"Url": url, "ClientTag": tag}, "Body": body}
+        self.sock.sendall((json.dumps(msg) + "\r\n").encode())
+        return self._await(tag, url)
 
     def body(self, url: str) -> dict[str, Any]:
         status, body = self.read(url)
@@ -196,6 +206,47 @@ def walk(client: LeapClient) -> dict[str, Any]:
         else:
             devices.append(item)
     return {"project": project.get("Name", ""), "processor": processor, "devices": devices}
+
+
+def discover_buttons(client: LeapClient) -> list[dict[str, Any]]:
+    """Every keypad button the processor knows: physical, homeowner and phantom keypads."""
+    buttons: list[dict[str, Any]] = []
+    areas = client.body("/area").get("Areas", [])
+    for area in areas:
+        status, body = client.read(f"{area['href']}/associatedcontrolstation")
+        if not status.startswith("200"):
+            continue
+        for station in body.get("ControlStations") or []:
+            for ganged in station.get("AssociatedGangedDevices") or []:
+                dev = ganged.get("Device", {})
+                s2, groups = client.read(f"{dev.get('href')}/buttongroup/expanded")
+                if not s2.startswith("200"):
+                    continue
+                for group in groups.get("ButtonGroupsExpanded") or []:
+                    for b in group.get("Buttons") or []:
+                        buttons.append({
+                            "button": _href_id(b["href"]),
+                            "label": (b.get("Engraving") or {}).get("Text") or b.get("Name", ""),
+                            "number": b.get("ButtonNumber"),
+                            "keypad": station.get("Name", ""),
+                            "keypad_type": dev.get("DeviceType", ""),
+                            "area": area.get("Name", ""),
+                        })
+    return buttons
+
+
+def press_button(client: LeapClient, button_id: str) -> None:
+    status, body = client.create(f"/button/{button_id}/commandprocessor",
+                                 {"Command": {"CommandType": "PressAndRelease"}})
+    if not status[:1] == "2":
+        raise LeapError(f"processor refused the press: {status} {body.get('Message', '')}".strip())
+
+
+def connect_paired(host: str, port: int = 8081, timeout: float = 5.0) -> LeapClient:
+    creds = find_pairing(host)
+    if not creds:
+        raise LeapError(f"no lap-pair certificates for {host} in {PAIRING_DIR}")
+    return LeapClient.connect_tls(host, port, timeout, *creds)
 
 
 def summarize(topology: dict[str, Any]) -> tuple[Status, str, dict[str, Any]]:
