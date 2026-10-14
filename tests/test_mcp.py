@@ -197,3 +197,26 @@ def test_stdio_round_trip(fleet):
     replies = [json.loads(x) for x in stdout.getvalue().splitlines()]
     assert [r.get("id") for r in replies] == [1, 2, None]
     assert replies[2]["error"]["code"] == -32700
+
+
+def test_activity_is_recorded_and_typical_latency_reported(fleet):
+    mcp, store, clock = fleet()
+    for i in range(10):
+        store.add_result(CheckResult("roon", Status.UP, latency_ms=200 + i, timestamp=T0 - 600 + i * 60))
+    err, data = call(mcp, "fleet_status")
+    roon = next(d for d in data["devices"] if d["id"] == "roon")
+    assert roon["typical_latency_ms"] == 204.5
+    call(mcp, "device_detail", {"device": "projector"})  # an error still counts as activity
+    summary = store.mcp_summary(T0 + 1)
+    assert summary["calls_24h"] == 2 and summary["last_used"] == T0
+    init = mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+    assert "typical_latency_ms" in init["result"]["instructions"]
+
+
+def test_claude_maintenance_is_attributed(fleet):
+    mcp, store, _ = fleet()
+    call(mcp, "start_maintenance", {"device": "lutron", "minutes": 20, "reason": "transfer"})
+    call(mcp, "end_maintenance", {"device": "lutron"})
+    msgs = [e["message"] for e in store.events() if e["kind"] == "maintenance"]
+    assert any(m.endswith("(transfer) via Claude") for m in msgs)
+    assert "Lutron QSX: maintenance ended via Claude" in msgs

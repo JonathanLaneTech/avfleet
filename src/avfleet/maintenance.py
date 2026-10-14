@@ -52,7 +52,7 @@ def _clock(ts: float) -> str:
 
 
 def start(store: Store, config: Config, names: list[str], seconds: int, reason: str = "",
-          now: float | None = None) -> list[str]:
+          now: float | None = None, via: str = "") -> list[str]:
     now = now or time.time()
     ids = resolve_devices(config, names)
     until = now + seconds
@@ -60,12 +60,13 @@ def start(store: Store, config: Config, names: list[str], seconds: int, reason: 
     for dev_id in ids:
         store.start_maintenance(dev_id, until, reason, now=now)
         note = f" ({reason})" if reason else ""
+        src = f" via {via}" if via else ""
         store.add_event(Event(dev_id, "maintenance",
-                              f"{names_by_id[dev_id]}: maintenance until {_clock(until)}{note}", timestamp=now))
+                              f"{names_by_id[dev_id]}: maintenance until {_clock(until)}{note}{src}", timestamp=now))
     return ids
 
 
-def end(store: Store, config: Config, names: list[str], now: float | None = None) -> list[str]:
+def end(store: Store, config: Config, names: list[str], now: float | None = None, via: str = "") -> list[str]:
     now = now or time.time()
     ids = resolve_devices(config, names)
     names_by_id = {d.id: d.name for d in config.devices}
@@ -73,7 +74,9 @@ def end(store: Store, config: Config, names: list[str], now: float | None = None
     for dev_id in ids:
         if store.end_maintenance(dev_id, now=now):
             ended.append(dev_id)
-            store.add_event(Event(dev_id, "maintenance", f"{names_by_id[dev_id]}: maintenance ended", timestamp=now))
+            src = f" via {via}" if via else ""
+            store.add_event(Event(dev_id, "maintenance", f"{names_by_id[dev_id]}: maintenance ended{src}",
+                                  timestamp=now))
     return ended
 
 

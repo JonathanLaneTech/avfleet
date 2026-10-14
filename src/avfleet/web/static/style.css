@@ -1,7 +1,7 @@
 :root {
   --bg: #f4f2ee; --panel: #ffffff; --ink: #1d1f22; --muted: #6b6f76; --line: #e3dfd8;
   --up: #2f8f5b; --degraded: #c58a12; --down: #c8432f; --unknown: #8a8f98;
-  --accent: #1f4e79; --spark: #1f4e79; --maint: #5a52c8;
+  --accent: #1f4e79; --spark: #1f4e79; --maint: #5a52c8; --claude: #c15f3c;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Helvetica, Arial, sans-serif;
 }
@@ -9,7 +9,7 @@
   :root {
     --bg: #111315; --panel: #1a1d20; --ink: #e8e6e1; --muted: #9a9ea6; --line: #2a2e33;
     --up: #4cc38a; --degraded: #e3a92b; --down: #f06a55; --unknown: #8a8f98;
-    --accent: #7fb0e0; --spark: #7fb0e0; --maint: #a7a1f2;
+    --accent: #7fb0e0; --spark: #7fb0e0; --maint: #a7a1f2; --claude: #e08a66;
   }
 }
 * { box-sizing: border-box; }
@@ -94,3 +94,11 @@ main { max-width: 1280px; margin: 0 auto; padding: 20px 24px 48px; }
 .ctl.end:hover { color: #fff; filter: brightness(1.08); }
 .ctl.cancel { color: var(--muted); }
 .ctl:focus-visible { outline: 2px solid var(--maint); outline-offset: 2px; }
+
+.claude { font: 600 12px var(--mono); padding: 3px 10px; border-radius: 999px; cursor: help;
+  color: var(--claude); border: 1px solid color-mix(in srgb, var(--claude) 40%, var(--line));
+  background: color-mix(in srgb, var(--claude) 8%, transparent); }
+.claude[hidden] { display: none; }
+.claude .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--claude);
+  vertical-align: 1px; }
+.stat .typ { color: var(--muted); font-size: 11px; white-space: nowrap; }

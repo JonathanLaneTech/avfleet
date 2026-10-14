@@ -139,7 +139,8 @@ class FleetMCP:
         status = build_status(self.config, self.store, now=now)
         devices = [{
             "id": d["id"], "name": d["name"], "group": d["group"], "status": d["status"],
-            "detail": d["detail"], "latency_ms": d["latency_ms"], "uptime_24h_pct": d["uptime_24h"],
+            "detail": d["detail"], "latency_ms": d["latency_ms"], "typical_latency_ms": d["latency_typical_ms"],
+            "uptime_24h_pct": d["uptime_24h"],
             "status_since": _ago(d["since"], now), "last_checked": _ago(d["checked_at"], now),
             "maintenance": ({"until": _clock(d["maintenance"]["until"]), "reason": d["maintenance"]["reason"]}
                             if d["maintenance"] else None),
@@ -164,6 +165,7 @@ class FleetMCP:
             "metrics": latest["metrics"] if latest else {},
             "last_checked": _ago(latest["ts"], now) if latest else None,
             "status_since": _ago(self.store.last_change(dev.id), now),
+            "typical_latency_ms": self.store.latency_typical(dev.id, now=now),
             "uptime_pct": self.store.uptime(dev.id, window_s=hours * 3600, now=now),
             "window_hours": hours,
             "outages": outages(rows, self.config.interval_s),
@@ -197,16 +199,18 @@ class FleetMCP:
         minutes = int(args.get("minutes", 30))
         if not 1 <= minutes <= 7 * 24 * 60:
             raise ToolError("minutes must be between 1 and 10080")
-        reason = (args.get("reason") or "set via Claude")[:120]
+        reason = (args.get("reason") or "")[:120]
         try:
-            ids = maintenance.start(self.store, self.config, names, minutes * 60, reason, now=self.clock())
+            ids = maintenance.start(self.store, self.config, names, minutes * 60, reason, now=self.clock(),
+                                    via="Claude")
         except ValueError as exc:
             raise ToolError(str(exc)) from None
         return {"started": ids, "minutes": minutes, "until": _clock(self.clock() + minutes * 60), "reason": reason}
 
     def end_maintenance(self, args):
         try:
-            ended = maintenance.end(self.store, self.config, [args.get("device") or "all"], now=self.clock())
+            ended = maintenance.end(self.store, self.config, [args.get("device") or "all"], now=self.clock(),
+                                    via="Claude")
         except ValueError as exc:
             raise ToolError(str(exc)) from None
         return {"ended": ended} if ended else {"ended": [], "note": "nothing was in maintenance"}
@@ -307,7 +311,10 @@ class FleetMCP:
                     "capabilities": {"tools": {"listChanged": False}},
                     "serverInfo": {"name": "avfleet", "version": __version__},
                     "instructions": "Monitors a home AV and network fleet. Read tools are safe to call freely. "
-                                    "Before calling any action tool, state what you'll do and get the user's OK.",
+                                    "Judge a device's response time against its own typical_latency_ms, not "
+                                    "against other devices: protocols differ (an encrypted Lutron session is "
+                                    "normally slower than a plain HTTP status call). Before calling any action "
+                                    "tool, state what you'll do and get the user's OK.",
                 }
             elif method == "ping":
                 result = {}
@@ -327,6 +334,14 @@ class FleetMCP:
         return {"jsonrpc": "2.0", "id": mid, "result": result}
 
     def _call(self, tool: Tool, args: dict[str, Any]) -> dict[str, Any]:
+        result = self._run(tool, args)
+        try:
+            self.store.record_mcp(tool.name, not result["isError"], now=self.clock())
+        except Exception:  # noqa: BLE001 - activity tracking must never break a tool call
+            pass
+        return result
+
+    def _run(self, tool: Tool, args: dict[str, Any]) -> dict[str, Any]:
         try:
             data = tool.handler(args)
             return {"content": [{"type": "text", "text": json.dumps(data, indent=1, default=str)}], "isError": False}

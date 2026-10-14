@@ -183,7 +183,8 @@ def test_dashboard_can_start_and_end_maintenance(control_server):
     assert status == 200 and body == {"started": ["dev"], "minutes": 30}
     assert "dev" in store.active_maintenance()
     data = json.loads(urllib.request.urlopen(base + "/api/status").read())
-    assert data["devices"][0]["maintenance"]["reason"] == "set from dashboard"
+    assert data["devices"][0]["maintenance"]["reason"] == ""
+    assert "via dashboard" in data["events"][0]["message"]
     assert data["controls"] == {"maintenance": True, "pin_required": False}
     status, body = _post(base, "/api/maintenance/end", {"device": "dev"})
     assert status == 200 and body == {"ended": ["dev"]}
@@ -218,3 +219,17 @@ def test_pin_is_enforced_when_configured(control_server):
     assert _post(base, "/api/maintenance", {"device": "dev"}, {"X-AVFleet-PIN": "4321"})[0] == 200
     data = json.loads(urllib.request.urlopen(base + "/api/status").read())
     assert data["controls"]["pin_required"] is True
+
+
+def test_typical_latency_needs_enough_healthy_samples():
+    s = Store(":memory:")
+    for i in range(4):
+        add(s, "up", NOW - 100 + i, latency=10)
+    assert s.latency_typical("dev", now=NOW) is None
+    add(s, "up", NOW - 10, latency=30)
+    add(s, "down", NOW - 5, latency=999)
+    assert s.latency_typical("dev", now=NOW) == 10
+    out = build_status(_config(), s, now=NOW)
+    assert out["devices"][0]["latency_typical_ms"] == 10 and out["mcp"] is None
+    s.record_mcp("fleet_status", True, now=NOW - 60)
+    assert build_status(_config(), s, now=NOW)["mcp"]["calls_24h"] == 1

@@ -191,6 +191,12 @@ pin = "${AVFLEET_PIN}"   # the dashboard asks for it once per browser
 can answer questions about it ("is everything healthy?", "why did Roon go down last night?",
 "is the theater ready?") and, if you allow it, take actions.
 
+![Claude Desktop explaining the fleet's evening from avfleet's history](docs/claude-desktop.png)
+
+*Above: asked "is everything healthy?", Claude reads avfleet's status and event history and
+works out that a Lutron processor's bounces lined up with programming transfers and their
+maintenance windows, rather than reporting a fault.*
+
 | Tool | Kind | What it does |
 |---|---|---|
 | `fleet_status` | read | Every device's status, detail, response time, 24 h uptime, maintenance, notices |
@@ -230,7 +236,11 @@ to the monitoring host, then in Claude Desktop open **Settings → Developer →
 }
 ```
 
-Restart Claude Desktop and avfleet appears under connectors. The server is standard-library
+Restart Claude Desktop and avfleet appears under connectors. Once Claude has used it, the
+dashboard header shows a "Claude · used 3m ago" badge (hover for what it's allowed to do), and
+the event log's **Claude** filter lists everything Claude has done. Tool output includes each
+device's *typical* response time, so Claude judges a slow-protocol device (an encrypted Lutron
+session) against its own normal rather than against a fast HTTP device. The server is standard-library
 Python and is tested against the official MCP client library.
 
 ## Extending

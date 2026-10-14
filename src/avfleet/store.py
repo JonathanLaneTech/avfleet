@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS maintenance (
     reason TEXT NOT NULL DEFAULT '', ended_early INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS maintenance_dev ON maintenance(device_id, end_ts);
+CREATE TABLE IF NOT EXISTS mcp_activity (ts REAL NOT NULL, tool TEXT NOT NULL, ok INTEGER NOT NULL);
 """
 
 HEALTHY = (Status.UP.value, Status.DEGRADED.value)
@@ -113,6 +114,7 @@ class Store:
             self._conn.execute("DELETE FROM results WHERE ts < ?", (cutoff,))
             self._conn.execute("DELETE FROM events WHERE ts < ?", (cutoff,))
             self._conn.execute("DELETE FROM maintenance WHERE end_ts < ?", (cutoff,))
+            self._conn.execute("DELETE FROM mcp_activity WHERE ts < ?", (cutoff,))
 
     # --- reads ----------------------------------------------------------------------
 
@@ -171,6 +173,31 @@ class Store:
             return first[0]["ts"]
         nxt = self._q("SELECT MIN(ts) AS ts FROM results WHERE device_id=? AND ts > ?", (device_id, prev))
         return nxt[0]["ts"]
+
+    def record_mcp(self, tool: str, ok: bool, now: float | None = None) -> None:
+        with self._lock, self._conn:
+            self._conn.execute("INSERT INTO mcp_activity VALUES (?,?,?)", (now or time.time(), tool, int(ok)))
+
+    def mcp_summary(self, now: float | None = None) -> dict[str, Any] | None:
+        """Last use and 24 h call count for the MCP server, or None if it has never been used."""
+        now = now or time.time()
+        rows = self._q("SELECT MAX(ts) AS last, SUM(CASE WHEN ts>=? THEN 1 ELSE 0 END) AS n FROM mcp_activity",
+                       (now - 86400,))
+        if not rows or rows[0]["last"] is None:
+            return None
+        return {"last_used": rows[0]["last"], "calls_24h": rows[0]["n"] or 0}
+
+    def latency_typical(self, device_id: str, window_s: float = 86400, now: float | None = None) -> float | None:
+        """Median response time over healthy, non-maintenance checks: this device's own normal."""
+        since = (now or time.time()) - window_s
+        rows = self._q("SELECT latency_ms FROM results WHERE device_id=? AND ts>=? AND latency_ms IS NOT NULL "
+                       "AND status IN (?,?) AND maintenance=0 ORDER BY latency_ms", (device_id, since, *HEALTHY))
+        if len(rows) < 5:
+            return None
+        values = [r["latency_ms"] for r in rows]
+        mid = len(values) // 2
+        median = values[mid] if len(values) % 2 else (values[mid - 1] + values[mid]) / 2
+        return round(median, 1)
 
     def results_since(self, device_id: str, since: float) -> list[dict[str, Any]]:
         rows = self._q("SELECT ts, status, detail, maintenance FROM results WHERE device_id=? AND ts>=? ORDER BY ts",

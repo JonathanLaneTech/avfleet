@@ -45,6 +45,7 @@ def build_status(config: Config, store: Store, now: float | None = None) -> dict
             "status": latest["status"] if latest else "unknown",
             "detail": latest["detail"] if latest else "waiting for first check",
             "latency_ms": latest["latency_ms"] if latest else None,
+            "latency_typical_ms": store.latency_typical(dev.id, now=now),
             "metrics": latest["metrics"] if latest else {},
             "checked_at": latest["ts"] if latest else None,
             "since": store.last_change(dev.id),
@@ -56,7 +57,8 @@ def build_status(config: Config, store: Store, now: float | None = None) -> dict
     return {"generated_at": now, "interval_s": config.interval_s, "devices": devices,
             "events": store.events(limit=100),
             "branding": {"title": config.web_title, "logo": logo_type(config) is not None},
-            "controls": {"maintenance": True, "pin_required": bool(config.web_pin)}}
+            "controls": {"maintenance": True, "pin_required": bool(config.web_pin)},
+            "mcp": ({**summary, "actions": config.mcp_actions} if (summary := store.mcp_summary(now)) else None)}
 
 
 def make_handler(config: Config, store: Store) -> type[BaseHTTPRequestHandler]:
@@ -137,13 +139,13 @@ def make_handler(config: Config, store: Store) -> type[BaseHTTPRequestHandler]:
                 body = json.loads(self.rfile.read(length))
                 device = str(body["device"])
                 if path.endswith("/end"):
-                    ended = maintenance.end(store, config, [device])
+                    ended = maintenance.end(store, config, [device], via="dashboard")
                     return self._json(200, {"ended": ended})
                 minutes = int(body.get("minutes", 30))
                 if not 1 <= minutes <= 7 * 24 * 60:
                     raise ValueError("minutes must be between 1 and 10080")
-                reason = str(body.get("reason") or "set from dashboard")[:120]
-                ids = maintenance.start(store, config, [device], minutes * 60, reason)
+                reason = str(body.get("reason") or "")[:120]
+                ids = maintenance.start(store, config, [device], minutes * 60, reason, via="dashboard")
                 return self._json(200, {"started": ids, "minutes": minutes})
             except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
                 return self._json(400, {"error": str(exc) or "bad request"})

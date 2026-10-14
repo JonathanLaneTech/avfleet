@@ -85,9 +85,16 @@ function tile(dev) {
   t.appendChild(head);
   t.appendChild(el("div", "detail", dev.detail));
   const stats = el("div", "stats");
-  const stat = (k, v) => { const s = el("div", "stat"); s.append(el("div", "k", k), el("div", "v", v)); return s; };
+  const stat = (k, v, sub) => {
+    const s = el("div", "stat");
+    const val = el("div", "v", v);
+    s.append(el("div", "k", k), val);
+    if (sub) s.appendChild(el("div", "typ", sub));
+    return s;
+  };
   stats.append(
-    stat("response", dev.latency_ms === null ? "—" : `${Math.round(dev.latency_ms)} ms`),
+    stat("response", dev.latency_ms === null ? "—" : `${Math.round(dev.latency_ms)} ms`,
+         dev.latency_typical_ms ? `typically ${Math.round(dev.latency_typical_ms)} ms` : null),
     stat("24h uptime", dev.uptime_24h === null ? "—" : `${dev.uptime_24h}%`),
     stat(dev.status === "up" ? "up for" : "for", ago(dev.since)),
   );
@@ -161,8 +168,22 @@ function maintControls(dev) {
 
 function render() {
   if (!lastData) return;
+  renderClaude(lastData.mcp);
   renderSummary(lastData.devices);
   renderGroups(lastData.devices);
+}
+
+const ACTION_NAMES = { maintenance: "maintenance", self_healing: "self-healing", lutron_buttons: "Lutron keypad buttons" };
+
+function renderClaude(mcp) {
+  const badge = document.getElementById("claude");
+  if (!mcp) { badge.hidden = true; return; }
+  badge.hidden = false;
+  badge.replaceChildren(el("span", "dot"), document.createTextNode(` Claude · used ${ago(mcp.last_used)} ago`));
+  const acts = (mcp.actions || []).map((a) => ACTION_NAMES[a] || a);
+  const calls = `${mcp.calls_24h} tool call${mcp.calls_24h === 1 ? "" : "s"}`;
+  badge.title = `Connected through avfleet's MCP server. ${calls} in the last 24 h. `
+    + `Claude can read fleet status and history${acts.length ? `, and with your approval: ${acts.join(", ")}` : ""}.`;
 }
 
 function renderSummary(devices) {
@@ -198,7 +219,8 @@ function renderGroups(devices) {
 function renderEvents(events) {
   const list = document.getElementById("events");
   list.replaceChildren();
-  const shown = events.filter((e) => eventFilter === "all" || e.kind === eventFilter);
+  const shown = events.filter((e) => eventFilter === "all" || e.kind === eventFilter
+    || (eventFilter === "claude" && /via Claude/.test(e.message)));
   if (!shown.length) { const li = el("li"); li.appendChild(el("span", "empty", "No events yet.")); list.appendChild(li); return; }
   for (const e of shown) {
     const li = el("li");
@@ -230,6 +252,7 @@ async function refresh() {
     const res = await fetch("/api/status", { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     lastData = await res.json();
+    renderClaude(lastData.mcp);
     renderSummary(lastData.devices);
     renderGroups(lastData.devices);
     renderEvents(lastData.events);
