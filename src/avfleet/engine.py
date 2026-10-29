@@ -128,13 +128,15 @@ class Monitor:
 
         if result.status.is_failure:
             state.consecutive_failures += 1
-            if state.consecutive_failures >= self.config.fail_threshold and not state.alerted_down:
+            threshold = dev.fail_threshold or self.config.fail_threshold
+            if state.consecutive_failures >= threshold and not state.alerted_down:
                 state.alerted_down = True
-                self._alert(dev, f"{dev.name} is DOWN", result.detail or "no response", priority=1)
+                if dev.alerts:
+                    self._alert(dev, f"{dev.name} is DOWN", result.detail or "no response", priority=1)
             if state.policy:
                 self._maybe_remediate(state, now)
         elif result.status in (Status.UP, Status.DEGRADED):
-            if state.alerted_down and self.config.notify_recovery:
+            if state.alerted_down and self.config.notify_recovery and dev.alerts:
                 self._alert(dev, f"{dev.name} recovered", result.detail or result.status.value)
             state.alerted_down = False
             state.consecutive_failures = 0

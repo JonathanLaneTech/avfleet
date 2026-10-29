@@ -51,6 +51,8 @@ class DeviceConfig:
     timeout_s: float = 5.0
     options: dict[str, Any] = field(default_factory=dict)
     remediation: RemediationConfig | None = None
+    fail_threshold: int | None = None
+    alerts: bool = True
     reboot: RebootConfig | None = None
 
 
@@ -132,6 +134,8 @@ def _device(raw: dict[str, Any], index: int) -> DeviceConfig:
         options=dict(raw.get("options", {})),
         remediation=remediation,
         reboot=reboot,
+        fail_threshold=int(raw["fail_threshold"]) if "fail_threshold" in raw else None,
+        alerts=bool(raw.get("alerts", True)),
     )
 
 
