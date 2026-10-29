@@ -31,10 +31,13 @@ CORE_PROCESSES = ("rpmStateCenter", "startupManager", "rpmMonitord")
 # The host's login shell is zsh, where a word starting with "=" is expanded as a command
 # path ("=foo" -> "foo not found"), so the separator must not start with "=" and is quoted.
 SEP = "@@avfleet@@"
+# Savant's "cloud environment" (e.g. cbeta1 for the beta channel), part of the version string.
+CLOUD_ENV_FILE = "/data/RPM/GNUstep/Library/ApplicationSupport/RacePointMedia/.cloud_env_key"
 INFO_SCRIPT = "; ".join([
-    # Version slot. Not racepointosver: it burns ~24 s of full CPU on a Smart Host, far too
-    # heavy to run every few minutes on the box that runs the house. A lighter source is TBD.
-    "true",
+    # Version: read the two small files racepointosver itself draws on. (Not racepointosver:
+    # it burns ~24 s of full CPU on a Smart Host, far too heavy to run every few minutes.)
+    "cat /etc/savant-os-release 2>/dev/null",
+    f"printf 'CLOUD_ENV=%s\\n' \"$(head -c 64 {CLOUD_ENV_FILE} 2>/dev/null)\"",
     f"echo '{SEP}'", "uname -r",
     f"echo '{SEP}'", "hostname",
     f"echo '{SEP}'", "cat /proc/device-tree/model 2>/dev/null",
@@ -60,9 +63,19 @@ def parse_info(text: str) -> dict:
     osver, kernel, hostname, model, ps = (p.strip() for p in parts[:5])
 
     info: dict = {}
-    m = re.search(r"Release version\s*:\s*(\S+)", osver)
-    if m:
-        info["version"] = m.group(1)
+    rel = dict(re.findall(r"^([A-Z_]+)=(.*)$", osver, re.M))
+    major = rel.get("SAVANT_PRODUCT_VERSION_MAJOR")
+    minor = rel.get("SAVANT_PRODUCT_VERSION_MINOR")
+    if not (major and minor) and rel.get("SAVANT_OS_VERSION"):
+        major, _, rest = rel["SAVANT_OS_VERSION"].partition(".")
+        minor = rest.partition(".")[0] or "0"
+    if major and minor:
+        # Same form as Savant's System Monitor: 12.0-cbeta1:555, or 12.0:555 off the beta channel.
+        env = rel.get("CLOUD_ENV", "").strip()
+        build = rel.get("BUILD_ID", "").strip()
+        info["version"] = f"{major}.{minor}" + (f"-{env}" if env else "") + (f":{build}" if build else "")
+    if rel.get("INSTALL_DATE"):
+        info["installed"] = rel["INSTALL_DATE"][:10]
     if kernel:
         info["os_version"] = kernel.split("+", 1)[0]
     if hostname:

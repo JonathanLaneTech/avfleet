@@ -10,10 +10,15 @@ from avfleet.checks.savant import SEP, SavantHostCheck, parse_info
 from avfleet.config import DeviceConfig
 from avfleet.models import Status
 
-OSVER = """RacepointOS Versions
-   Release version   : 12.0-cbeta1:555
-   Cloud environment : cbeta1
-   Version ID: 12.0.0:555
+OSVER = """MANUFACTURER=Savant Systems
+SAVANT_OS_VERSION=12.0.0
+SAVANT_IMAGE_TYPE=host_audio
+BUILD_ID=555
+SAVANT_PRODUCT_VERSION_MAJOR=12
+SAVANT_PRODUCT_VERSION_MINOR=0
+SAVANT_PRODUCT_VERSION_MAINT=0
+INSTALL_DATE=2026-10-25T02:47:24+00:00
+CLOUD_ENV=cbeta1
 """
 PS_OK = """RPM 1129 2.2 1.5 307780 32300 ? SNl 15:07 0:53 /usr/local/bin/startupManager
 RPM 1168 5.7 1.5 364588 31420 ? SNsl 15:07 2:18 /usr/local/bin/rpmMonitord
@@ -53,6 +58,7 @@ def test_parse_matches_system_monitor():
     assert info["name"] == "Healing House Host"
     assert info["unique_id"] == "001AAE11CD070000"
     assert info["version"] == "12.0-cbeta1:555"
+    assert info["installed"] == "2026-10-25"
     assert info["os_version"] == "4.14.78"
     assert info["model"] == "PAV-SIPA1SM-00"
     assert all(info["processes"].values())
@@ -142,7 +148,8 @@ def test_never_runs_racepointosver():
 
 
 def test_no_version_still_reads_system_running(monkeypatch):
-    fake_ssh(monkeypatch, output().replace("Release version   : 12.0-cbeta1:555", ""))
+    no_release = SEP + output().split(SEP, 1)[1]      # release-file section empty
+    fake_ssh(monkeypatch, no_release)
     assert SavantHostCheck(dev()).run().detail == "System Running"
 
 
@@ -154,3 +161,12 @@ def test_timeout_message_is_readable(monkeypatch):
     r = SavantHostCheck(dev()).run()
     assert r.status is Status.DEGRADED
     assert r.detail == "host answering; Savant status timed out after 20 s"
+
+
+def test_release_channel_has_no_env_suffix():
+    assert parse_info(output().replace("CLOUD_ENV=cbeta1", "CLOUD_ENV="))["version"] == "12.0:555"
+
+
+def test_script_reads_files_not_credentials():
+    assert "/etc/savant-os-release" in savant.INFO_SCRIPT and ".cloud_env_key" in savant.INFO_SCRIPT
+    assert "scsCredentials" not in savant.INFO_SCRIPT
