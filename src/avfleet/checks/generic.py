@@ -22,7 +22,7 @@ class TcpCheck(Check):
                 times.append(tcp_connect(self.device.host, int(port), self.device.timeout_s))
             except OSError as exc:
                 return self.result(Status.DOWN, f"port {port}: {exc.strerror or exc}")
-        return self.result(Status.UP, f"ports {', '.join(map(str, ports))} open", latency_ms=max(times))
+        return self.result(Status.UP, "Online", latency_ms=max(times), metrics={"ports": ports})
 
 
 @register("http")

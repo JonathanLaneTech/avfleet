@@ -160,7 +160,7 @@ def test_timeout_message_is_readable(monkeypatch):
     monkeypatch.setattr(SavantHostCheck, "run_ssh", slow)
     r = SavantHostCheck(dev()).run()
     assert r.status is Status.DEGRADED
-    assert r.detail == "host answering; Savant status timed out after 20 s"
+    assert r.detail == "Host answering; Savant status timed out after 20 s"
 
 
 def test_release_channel_has_no_env_suffix():

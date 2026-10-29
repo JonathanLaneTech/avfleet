@@ -8,6 +8,7 @@ Each device type registers a subclass with ``@register("type-name")``; the confi
 from __future__ import annotations
 
 import json
+import re
 import socket
 import ssl
 import time
@@ -48,6 +49,12 @@ def build_check(device: DeviceConfig) -> Check:
     return cls(device)
 
 
+def title_state(value: str) -> str:
+    """A device's own state word in card style: "standby" -> "Standby", "optical1" -> "Optical 1"."""
+    value = re.sub(r"(?<=[a-z])(?=\d)", " ", str(value).replace("_", " "))
+    return " ".join(w[:1].upper() + w[1:] for w in value.split())
+
+
 class Check:
     type_name: ClassVar[str] = ""
 
@@ -78,6 +85,9 @@ class Check:
     ) -> CheckResult:
         if latency_ms is None and started is not None:
             latency_ms = (time.perf_counter() - started) * 1000
+        # House style: every card's text starts with a capital (normal readings are Title Case
+        # in the checks themselves; error text from the system is only capitalized).
+        detail = detail[:1].upper() + detail[1:]
         return CheckResult(
             device_id=self.device.id,
             status=status,

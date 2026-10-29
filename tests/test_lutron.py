@@ -127,7 +127,7 @@ def test_walk_never_reads_link_records(qsx):
 def test_summary_healthy_single_zone(qsx):
     status, detail, m = summarize(walk(qsx().client()))
     assert status is Status.UP
-    assert detail == "1 Ketra fixture · Lamp set to 100% · 3500 K"
+    assert detail == "1 Ketra Fixture · Lamp 100% · 3500 K"
     assert m["firmware"] == "26.07.34f000" and m["ketra_total"] == 1 and m["zones_on"] == 1
     assert m["firmware_package"] == "002.025.035r000"
     assert "availability_unknown" not in m  # presence isn't reported on QSX; nothing shown for it
@@ -135,7 +135,7 @@ def test_summary_healthy_single_zone(qsx):
 
 def test_summary_off(qsx):
     _, detail, m = summarize(walk(qsx(level=0).client()))
-    assert detail.endswith("Lamp set off") and m["zones_on"] == 0
+    assert detail.endswith("Lamp Off") and m["zones_on"] == 0
 
 
 def test_unavailable_fixture_is_degraded_and_named(qsx):
@@ -174,7 +174,7 @@ def test_many_fixtures_summary():
     assert status is Status.DEGRADED and detail == "1 unavailable: Z2"
     devs[2].availability = "Available"
     status, detail, m = summarize({"processor": None, "devices": devs})
-    assert status is Status.UP and detail == "6 Ketra fixtures · 3/6 zones on"
+    assert status is Status.UP and detail == "6 Ketra Fixtures · 3/6 Zones On"
     assert "availability_unknown" not in m
 
 

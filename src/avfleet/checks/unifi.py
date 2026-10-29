@@ -126,14 +126,14 @@ def summarize_device(dev: dict[str, Any], expected_up_ports: list[int] | None = 
         return status, name, metrics
     parts = []
     if metrics.get("clients") is not None:
-        parts.append(f"{metrics['clients']} clients")
+        parts.append(f"{metrics['clients']} Clients")
     if ports:
-        parts.append(f"{metrics['ports_up']}/{metrics['ports_total']} ports up")
+        parts.append(f"{metrics['ports_up']}/{metrics['ports_total']} Ports Up")
         if metrics["poe_watts"]:
             parts.append(f"PoE {metrics['poe_watts']} W")
     if down_expected:
         return Status.DEGRADED, f"expected port(s) down: {', '.join(map(str, down_expected))}", metrics
-    return Status.UP, ", ".join(parts) or "connected", metrics
+    return Status.UP, " · ".join(parts) or "connected", metrics
 
 
 @register("unifi_device")

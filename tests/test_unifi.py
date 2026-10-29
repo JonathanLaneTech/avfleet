@@ -24,7 +24,7 @@ def test_summarize_switch_ports_and_poe():
     assert m["poe_watts"] == 21.9
     assert m["poe_budget_watts"] == 180
     assert m["cpu_pct"] == 12.5
-    assert "9 clients" in detail and "2/3 ports up" in detail
+    assert detail == "9 Clients · 2/3 Ports Up · PoE 21.9 W"
 
 
 def test_expected_port_down_is_degraded():
@@ -42,7 +42,7 @@ def test_disconnected_is_down_upgrading_is_degraded():
 
 def test_access_point_clients():
     status, detail, m = summarize_device({"mac": "x", "state": 1, "num_sta": 14, "model": "U7PROMAX"})
-    assert status is Status.UP and detail == "14 clients" and m["clients"] == 14
+    assert status is Status.UP and detail == "14 Clients" and m["clients"] == 14
 
 
 def _controller(fake_http, mac, expire_first=False):

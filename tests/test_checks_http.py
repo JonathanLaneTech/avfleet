@@ -25,14 +25,14 @@ def yamaha(fake_http, payload, status=200):
 def test_yamaha_on(fake_http):
     r = yamaha(fake_http, {"response_code": 0, "power": "on", "input": "net_radio", "volume": 40})
     assert r.status is Status.UP
-    assert "net_radio" in r.detail
+    assert r.detail == "On · Net Radio"
     assert r.metrics["volume"] == 40
     assert r.latency_ms is not None
 
 
 def test_yamaha_standby_is_healthy(fake_http):
     r = yamaha(fake_http, {"response_code": 0, "power": "standby"})
-    assert r.status is Status.UP and r.detail == "standby"
+    assert r.status is Status.UP and r.detail == "Standby"
 
 
 def test_yamaha_error_code_is_degraded(fake_http):
@@ -57,13 +57,13 @@ def test_apple_tv_info_plist(fake_http):
     r = build_check(device("apple_tv", port=fake_http.port)).run()
     assert r.status is Status.UP
     assert r.metrics["model"] == "AppleTV14,1"
-    assert "AppleTV14,1" in r.detail
+    assert r.detail == "AirPlay Ready"
 
 
 def test_homepod_403_still_up(fake_http):
     fake_http.routes[("GET", "/info")] = (403, b"", {})
     r = build_check(device("homepod", port=fake_http.port)).run()
-    assert r.status is Status.UP and "403" in r.detail
+    assert r.status is Status.UP and r.detail == "AirPlay Ready"
 
 
 def test_airplay_500_down(fake_http):

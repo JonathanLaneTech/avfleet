@@ -16,7 +16,7 @@ import time
 from dataclasses import dataclass
 
 from ..models import Status
-from .base import Check, register
+from .base import Check, register, title_state
 
 
 @dataclass(slots=True)
@@ -66,7 +66,7 @@ class KaleidescapeCheck(Check):
             return self.result(Status.DEGRADED, f"error status {reply.status:03d}", latency_ms=latency)
         power = reply.fields[0] if reply.fields else "?"
         state = {"1": "on", "0": "standby"}.get(power, f"power state {power}")
-        return self.result(Status.UP, state, latency_ms=latency, metrics={"power": state})
+        return self.result(Status.UP, title_state(state), latency_ms=latency, metrics={"power": state})
 
     @staticmethod
     def _read_reply(sock: socket.socket, seq: str) -> KReply | None:

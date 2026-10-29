@@ -53,12 +53,12 @@ def kscape_responder(power="1", status="000", noise=True):
 def test_kaleidescape_on_ignores_unsolicited_events(fake_tcp):
     srv = fake_tcp(kscape_responder(power="1"))
     r = build_check(device("kaleidescape", port=srv.port)).run()
-    assert r.status is Status.UP and r.detail == "on"
+    assert r.status is Status.UP and r.detail == "On"
 
 
 def test_kaleidescape_standby(fake_tcp):
     srv = fake_tcp(kscape_responder(power="0", noise=False))
-    assert build_check(device("kaleidescape", port=srv.port)).run().detail == "standby"
+    assert build_check(device("kaleidescape", port=srv.port)).run().detail == "Standby"
 
 
 def test_kaleidescape_error_status_degraded(fake_tcp):
@@ -75,3 +75,10 @@ def test_kaleidescape_silent_device_down(fake_tcp):
 
 def test_lutron_unreachable_down(closed_port):
     assert build_check(device("lutron_leap", port=closed_port)).run().status is Status.DOWN
+
+
+def test_title_state_card_style():
+    from avfleet.checks.base import title_state
+    assert title_state("standby") == "Standby"
+    assert title_state("optical1") == "Optical 1"
+    assert title_state("net_radio") == "Net Radio"

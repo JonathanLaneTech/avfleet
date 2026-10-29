@@ -277,16 +277,16 @@ def summarize(topology: dict[str, Any]) -> tuple[Status, str, dict[str, Any]]:
     if transfer:
         metrics["notice"] = f"Programming transfer {transfer[0].transfer.lower()}"
         return Status.DEGRADED, f"programming transfer {transfer[0].transfer.lower()} on {transfer[0].label}", metrics
-    noun = "Ketra fixture" if len(ketra) == 1 else "Ketra fixtures"
+    noun = "Ketra Fixture" if len(ketra) == 1 else "Ketra Fixtures"
     detail = f"{len(ketra)} {noun}"
     if len(zones) == 1:
         z = zones[0]
         level = z.get("level")
         # The processor reports the level it last commanded, not measured output (see module docstring).
-        state = "set off" if not level else f"set to {level}%" + (f" · {z['kelvin']} K" if z.get("kelvin") else "")
+        state = "Off" if not level else f"{level}%" + (f" · {z['kelvin']} K" if z.get("kelvin") else "")
         detail += f" · {z.get('name') or 'zone'} {state}"
     elif zones:
-        detail += f" · {metrics['zones_on']}/{len(zones)} zones on"
+        detail += f" · {metrics['zones_on']}/{len(zones)} Zones On"
     return Status.UP, detail, metrics
 
 
@@ -339,6 +339,6 @@ class LutronLeapCheck(Check):
             except ssl.SSLError as exc:
                 # A processor demanding a client cert we don't have still proves LEAP is listening.
                 if "CERTIFICATE_REQUIRED" in str(exc) or "certificate required" in str(exc).lower():
-                    return self.result(Status.UP, "LEAP listening (not paired)", started=started)
+                    return self.result(Status.UP, "LEAP Ready · Not Paired", started=started)
                 raise
-        return self.result(Status.UP, "LEAP TLS handshake OK", latency_ms=latency)
+        return self.result(Status.UP, "LEAP Ready", latency_ms=latency)

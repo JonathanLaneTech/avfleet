@@ -29,10 +29,10 @@ class AirPlayCheck(Check):
                         metrics[dst] = str(info[src])
             except (plistlib.InvalidFileException, ValueError, TypeError):
                 pass
-            detail = "AirPlay ready" + (f" ({metrics['model']})" if "model" in metrics else "")
-            return self.result(Status.UP, detail, latency_ms=resp.latency_ms, metrics=metrics)
+            return self.result(Status.UP, "AirPlay Ready", latency_ms=resp.latency_ms, metrics=metrics)
         if resp.status in (401, 403, 470):
-            return self.result(Status.UP, f"AirPlay answering (HTTP {resp.status})", latency_ms=resp.latency_ms)
+            # 401/403/470: it answered and wants pairing for detail. Ready, as far as the card goes.
+            return self.result(Status.UP, "AirPlay Ready", latency_ms=resp.latency_ms)
         return self.result(Status.DOWN, f"AirPlay HTTP {resp.status}", latency_ms=resp.latency_ms)
 
 

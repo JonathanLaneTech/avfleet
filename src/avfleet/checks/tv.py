@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 
 from ..models import Status
-from .base import Check, http_request, register, tcp_connect
+from .base import Check, http_request, register, tcp_connect, title_state
 
 
 @register("tv")
@@ -28,7 +28,7 @@ class TvCheck(Check):
             if not port:
                 return self.result(Status.UNKNOWN, "protocol 'tcp' needs a 'port'")
             ms = tcp_connect(self.device.host, int(port), self.device.timeout_s)
-            return self.result(Status.UP, f"control port {port} open", latency_ms=ms)
+            return self.result(Status.UP, "Online", latency_ms=ms)
         return self.result(Status.UNKNOWN, f"unknown TV protocol '{protocol}'")
 
     def _sony(self):
@@ -44,7 +44,9 @@ class TvCheck(Check):
         if "error" in data:
             return self.result(Status.DEGRADED, f"Bravia error {data['error']}", latency_ms=resp.latency_ms)
         power = data.get("result", [{}])[0].get("status", "unknown")
-        return self.result(Status.UP, power, latency_ms=resp.latency_ms, metrics={"power": power})
+        # Sony says "active" for on.
+        shown = "On" if power == "active" else title_state(power)
+        return self.result(Status.UP, shown, latency_ms=resp.latency_ms, metrics={"power": power})
 
     def _samsung(self):
         port = int(self.opt("port", 8001))
@@ -54,4 +56,4 @@ class TvCheck(Check):
         dev = resp.json().get("device", {})
         power = dev.get("PowerState", "on")
         metrics = {"power": power, **({"model": dev["modelName"]} if "modelName" in dev else {})}
-        return self.result(Status.UP, power, latency_ms=resp.latency_ms, metrics=metrics)
+        return self.result(Status.UP, title_state(power), latency_ms=resp.latency_ms, metrics=metrics)

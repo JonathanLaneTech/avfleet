@@ -8,7 +8,7 @@ unit will answer control commands.
 from __future__ import annotations
 
 from ..models import Status
-from .base import Check, http_request, register
+from .base import Check, http_request, register, title_state
 
 
 @register("yamaha_yxc")
@@ -29,5 +29,5 @@ class YamahaYxcCheck(Check):
                 Status.DEGRADED, f"YXC response_code {code}", latency_ms=resp.latency_ms, metrics=metrics
             )
         power = data.get("power", "unknown")
-        detail = f"{power}" + (f", input {data['input']}" if power == "on" and "input" in data else "")
+        detail = title_state(power) + (f" · {title_state(data['input'])}" if power == "on" and "input" in data else "")
         return self.result(Status.UP, detail, latency_ms=resp.latency_ms, metrics=metrics)
