@@ -115,3 +115,22 @@ def test_reboot_action(monkeypatch, stdout, ok):
     result = build_action("savant_reboot", dev(), {}).run()
     assert result.ok is ok
     assert "RPM@h" in seen["argv"] and "sudo -n /sbin/reboot" in seen["argv"][-1]
+
+
+def test_separator_is_safe_in_zsh():
+    # zsh expands a word starting with "=" as a command path and aborts the whole line.
+    assert not SEP.startswith("=")
+    assert f"echo '{SEP}'" in savant.INFO_SCRIPT
+
+
+def test_remote_command_error_is_not_called_a_login_failure(monkeypatch):
+    fake_ssh(monkeypatch, rc=1, stderr="zsh:1: something not found")
+    r = SavantHostCheck(dev()).run()
+    assert r.status is Status.DEGRADED and "status command failed" in r.detail
+
+
+def test_own_command_line_in_ps_does_not_break_parsing():
+    ps = PS_OK + f"RPM 2001 0.0 0.0 1 1 ? Ss 16:00 0:00 zsh -c echo '{SEP}'; uname -r; echo '{SEP}'\n"
+    info = parse_info(output(ps))
+    assert info["model"] == "PAV-SIPA1SM-00" and info["name"] == "Healing House Host"
+    assert all(info["processes"].values())

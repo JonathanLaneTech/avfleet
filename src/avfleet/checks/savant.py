@@ -28,13 +28,15 @@ from .base import Check, register, tcp_connect
 # The processes that mean "the Savant system is running", not just "the box is on".
 CORE_PROCESSES = ("rpmStateCenter", "startupManager", "rpmMonitord")
 
-SEP = "=====avfleet====="
+# The host's login shell is zsh, where a word starting with "=" is expanded as a command
+# path ("=foo" -> "foo not found"), so the separator must not start with "=" and is quoted.
+SEP = "@@avfleet@@"
 INFO_SCRIPT = "; ".join([
     "/usr/local/bin/racepointosver 2>/dev/null | head -12",
-    f"echo {SEP}", "uname -r",
-    f"echo {SEP}", "hostname",
-    f"echo {SEP}", "cat /proc/device-tree/model 2>/dev/null",
-    f"echo {SEP}", "ps aux",
+    f"echo '{SEP}'", "uname -r",
+    f"echo '{SEP}'", "hostname",
+    f"echo '{SEP}'", "cat /proc/device-tree/model 2>/dev/null",
+    f"echo '{SEP}'", "ps aux",
 ])
 
 # device id -> (time read, parsed info). Checks are rebuilt every cycle, so the cache lives here.
@@ -50,7 +52,8 @@ def ssh_argv(user: str, host: str, key: str | None, timeout: float) -> list[str]
 
 def parse_info(text: str) -> dict:
     """Turn the INFO_SCRIPT output into the fields System Monitor shows, plus process health."""
-    parts = text.split(SEP)
+    # maxsplit: the ps listing includes this very command line, separators and all.
+    parts = text.split(SEP, 4)
     parts += [""] * (5 - len(parts))
     osver, kernel, hostname, model, ps = (p.strip() for p in parts[:5])
 
@@ -101,7 +104,8 @@ class SavantHostCheck(Check):
         else:
             if proc.returncode != 0:
                 err = (proc.stderr.strip().splitlines() or [f"exit {proc.returncode}"])[-1]
-                info = {"error": f"SSH login failed: {err}"}
+                what = "SSH login failed" if proc.returncode == 255 else "status command failed"
+                info = {"error": f"{what}: {err}"}
             else:
                 info = parse_info(proc.stdout)
         _CACHE[self.device.id] = (now, info)
