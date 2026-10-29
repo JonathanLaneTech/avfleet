@@ -32,8 +32,9 @@ CORE_PROCESSES = ("rpmStateCenter", "startupManager", "rpmMonitord")
 # path ("=foo" -> "foo not found"), so the separator must not start with "=" and is quoted.
 SEP = "@@avfleet@@"
 INFO_SCRIPT = "; ".join([
-    # Savant's own tools need their shared libraries, which only a login shell points at.
-    "LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/racepointosver 2>/dev/null | head -12",
+    # Version slot. Not racepointosver: it burns ~24 s of full CPU on a Smart Host, far too
+    # heavy to run every few minutes on the box that runs the house. A lighter source is TBD.
+    "true",
     f"echo '{SEP}'", "uname -r",
     f"echo '{SEP}'", "hostname",
     f"echo '{SEP}'", "cat /proc/device-tree/model 2>/dev/null",
@@ -100,8 +101,10 @@ class SavantHostCheck(Check):
             return cached[1]
         try:
             proc = self.run_ssh(INFO_SCRIPT)
+        except subprocess.TimeoutExpired as exc:
+            info = {"error": f"Savant status timed out after {int(exc.timeout)} s"}
         except (OSError, subprocess.SubprocessError) as exc:
-            info = {"error": f"SSH: {exc}"}
+            info = {"error": f"SSH: {type(exc).__name__}"}
         else:
             if proc.returncode != 0:
                 err = (proc.stderr.strip().splitlines() or [f"exit {proc.returncode}"])[-1]

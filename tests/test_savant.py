@@ -136,5 +136,21 @@ def test_own_command_line_in_ps_does_not_break_parsing():
     assert all(info["processes"].values())
 
 
-def test_racepointosver_gets_its_libraries():
-    assert "LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/racepointosver" in savant.INFO_SCRIPT
+def test_never_runs_racepointosver():
+    # ~24 s of full CPU on the host per call: never part of a routine check.
+    assert "racepointosver" not in savant.INFO_SCRIPT
+
+
+def test_no_version_still_reads_system_running(monkeypatch):
+    fake_ssh(monkeypatch, output().replace("Release version   : 12.0-cbeta1:555", ""))
+    assert SavantHostCheck(dev()).run().detail == "System Running"
+
+
+def test_timeout_message_is_readable(monkeypatch):
+    def slow(self, script, timeout=20):
+        raise subprocess.TimeoutExpired(["ssh", "long", "command"], 20)
+
+    monkeypatch.setattr(SavantHostCheck, "run_ssh", slow)
+    r = SavantHostCheck(dev()).run()
+    assert r.status is Status.DEGRADED
+    assert r.detail == "host answering; Savant status timed out after 20 s"
