@@ -1,6 +1,6 @@
 """Self-healing actions. Importing this package registers the built-in actions."""
 
-from . import bravia, roon_restart  # noqa: F401
+from . import bravia, roon_restart, savant_reboot  # noqa: F401
 from .base import Action, build_action, register_action
 
 __all__ = ["Action", "build_action", "register_action"]

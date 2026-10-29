@@ -131,6 +131,32 @@ psk = "${SONY_PSK}"              # TV: Settings > Network > IP control > Pre-Sha
 action = "bravia_reboot"
 cooldown_s = 300
 
+# --- Control -------------------------------------------------------------------------
+
+[[devices]]
+id = "savant"
+name = "Savant Smart Host"
+type = "savant_host"             # port check every minute; version, model and Savant health every 5 min
+host = "192.0.2.50"
+group = "Control"
+[devices.options]
+ssh_key = "~/.avfleet/savant_ed25519"   # ssh-copy-id -i this.pub RPM@host
+[devices.reboot]                 # adds a "Reboot host" button (sudo /sbin/reboot over SSH)
+action = "savant_reboot"
+label = "Reboot host"
+cooldown_s = 600
+
+[[devices]]
+id = "savant-remote"
+name = "Savant Remote"
+type = "tcp"
+host = "192.0.2.51"
+group = "Control"
+alerts = false                   # handhelds sleep: show it on the dashboard, never push a notification
+fail_threshold = 30              # and only call it down after ~30 min of silence
+[devices.options]
+ports = [5656]
+
 # --- Lighting ------------------------------------------------------------------------
 
 [[devices]]
