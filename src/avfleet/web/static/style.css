@@ -52,7 +52,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 20px 24px 48px; }
 .notice.maint { color: var(--maint); background: color-mix(in srgb, var(--maint) 12%, transparent); }
 .notice.warn { color: var(--degraded); background: color-mix(in srgb, var(--degraded) 13%, transparent); }
 @keyframes pulse { 50% { opacity: .25; } }
-.detail { color: var(--muted); font-size: 13px; min-height: 19px; overflow-wrap: anywhere; }
+.detail { color: var(--muted); font-size: 13px; min-height: 19px; overflow-wrap: anywhere; white-space: pre-line; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .stat { border-top: 1px solid var(--line); padding-top: 6px; }
 .stat .k { color: var(--muted); font-size: 11px; }

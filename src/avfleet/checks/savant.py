@@ -32,7 +32,8 @@ CORE_PROCESSES = ("rpmStateCenter", "startupManager", "rpmMonitord")
 # path ("=foo" -> "foo not found"), so the separator must not start with "=" and is quoted.
 SEP = "@@avfleet@@"
 INFO_SCRIPT = "; ".join([
-    "/usr/local/bin/racepointosver 2>/dev/null | head -12",
+    # Savant's own tools need their shared libraries, which only a login shell points at.
+    "LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/racepointosver 2>/dev/null | head -12",
     f"echo '{SEP}'", "uname -r",
     f"echo '{SEP}'", "hostname",
     f"echo '{SEP}'", "cat /proc/device-tree/model 2>/dev/null",
@@ -125,13 +126,8 @@ class SavantHostCheck(Check):
                                metrics=info)
 
         stopped = [p for p, ok in info["processes"].items() if not ok]
-        facts = " · ".join(x for x in (
-            f"Savant {info['version']}" if info.get("version") else "",
-            f"OS {info['os_version']}" if info.get("os_version") else "",
-            info.get("model", ""),
-        ) if x)
+        software = f"Software {info['version']}\n" if info.get("version") else ""
         if stopped:
-            return self.result(Status.DOWN, f"Savant services stopped: {', '.join(stopped)}"
-                               + (f" ({facts})" if facts else ""), latency_ms=ms, metrics=info)
-        return self.result(Status.UP, f"{facts} · system running" if facts else "system running",
-                           latency_ms=ms, metrics=info)
+            return self.result(Status.DOWN, f"{software}Savant Services Stopped: {', '.join(stopped)}",
+                               latency_ms=ms, metrics=info)
+        return self.result(Status.UP, f"{software}System Running", latency_ms=ms, metrics=info)

@@ -62,7 +62,7 @@ def test_up_shows_version_os_model(monkeypatch):
     fake_ssh(monkeypatch, output())
     r = SavantHostCheck(dev()).run()
     assert r.status is Status.UP
-    assert r.detail == "Savant 12.0-cbeta1:555 · OS 4.14.78 · PAV-SIPA1SM-00 · system running"
+    assert r.detail == "Software 12.0-cbeta1:555\nSystem Running"
 
 
 def test_stopped_state_center_is_down(monkeypatch):
@@ -70,7 +70,7 @@ def test_stopped_state_center_is_down(monkeypatch):
     fake_ssh(monkeypatch, output(ps))
     r = SavantHostCheck(dev()).run()
     assert r.status is Status.DOWN
-    assert r.detail.startswith("Savant services stopped: rpmStateCenter")
+    assert r.detail == "Software 12.0-cbeta1:555\nSavant Services Stopped: rpmStateCenter"
 
 
 def test_ssh_failure_is_degraded_not_down(monkeypatch):
@@ -134,3 +134,7 @@ def test_own_command_line_in_ps_does_not_break_parsing():
     info = parse_info(output(ps))
     assert info["model"] == "PAV-SIPA1SM-00" and info["name"] == "Healing House Host"
     assert all(info["processes"].values())
+
+
+def test_racepointosver_gets_its_libraries():
+    assert "LD_LIBRARY_PATH=/usr/local/lib /usr/local/bin/racepointosver" in savant.INFO_SCRIPT
